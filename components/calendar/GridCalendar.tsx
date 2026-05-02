@@ -4,6 +4,7 @@ import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
+import multiMonthPlugin from "@fullcalendar/multimonth";
 import type { CalendarEvent } from "@/lib/types";
 
 type Props = {
@@ -15,12 +16,12 @@ export function GridCalendar({ events, onEventClick }: Props) {
   return (
     <div className="h-full">
       <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, multiMonthPlugin]}
         initialView="dayGridMonth"
         headerToolbar={{
           left: "prev,next today",
           center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
+          right: "multiMonthYear,dayGridMonth,timeGridWeek,timeGridDay",
         }}
         height="100%"
         firstDay={1}
@@ -30,7 +31,9 @@ export function GridCalendar({ events, onEventClick }: Props) {
           month: "Mes",
           week: "Semana",
           day: "Día",
+          year: "Año",
         }}
+        multiMonthMaxColumns={3}
         events={events.map((e) => ({
           id: e.id,
           title: e.title,

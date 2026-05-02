@@ -11,6 +11,7 @@ type Props = {
   selection: SidebarSelection;
   events: CalendarEvent[];
   onNewEvent?: () => void;
+  onEventClick?: (e: CalendarEvent) => void;
 };
 
 function selectionLabel(s: SidebarSelection) {
@@ -18,7 +19,7 @@ function selectionLabel(s: SidebarSelection) {
   return s.name;
 }
 
-export function CalendarArea({ selection, events, onNewEvent }: Props) {
+export function CalendarArea({ selection, events, onNewEvent, onEventClick }: Props) {
   const [view, setView] = useState<CalendarView>("grid");
 
   return (
@@ -48,10 +49,10 @@ export function CalendarArea({ selection, events, onNewEvent }: Props) {
       <div className="flex-1 overflow-hidden p-6">
         {view === "grid" ? (
           <div className="h-full bg-white dark:bg-zinc-900/40 rounded-2xl border border-black/5 dark:border-white/5 p-4 shadow-sm">
-            <GridCalendar events={events} />
+            <GridCalendar events={events} onEventClick={onEventClick} />
           </div>
         ) : (
-          <EventFeed events={events} />
+          <EventFeed events={events} onEventClick={onEventClick} />
         )}
       </div>
     </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Calendar, Clock, MapPin, FileText, Image as ImageIcon } from "lucide-react";
+import { X, Calendar, Clock, MapPin, FileText, Image as ImageIcon, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { CalendarEvent } from "@/lib/types";
 
@@ -9,7 +9,10 @@ type Props = {
   open: boolean;
   onClose: () => void;
   onCreated: (e: CalendarEvent) => void;
+  onUpdated?: (e: CalendarEvent) => void;
+  onDeleted?: (id: string) => void;
   userId: string;
+  event?: CalendarEvent | null;
 };
 
 function defaultDateTime(offsetHours = 1) {
@@ -18,7 +21,22 @@ function defaultDateTime(offsetHours = 1) {
   return d.toISOString().slice(0, 16);
 }
 
-export function EventModal({ open, onClose, onCreated, userId }: Props) {
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export function EventModal({
+  open,
+  onClose,
+  onCreated,
+  onUpdated,
+  onDeleted,
+  userId,
+  event,
+}: Props) {
+  const isEdit = !!event;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
@@ -26,18 +44,30 @@ export function EventModal({ open, onClose, onCreated, userId }: Props) {
   const [endAt, setEndAt] = useState(defaultDateTime(2));
   const [location, setLocation] = useState("");
   const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
-    setTitle("");
-    setDescription("");
-    setImageUrl("");
-    setStartAt(defaultDateTime(1));
-    setEndAt(defaultDateTime(2));
-    setLocation("");
+    setConfirmDelete(false);
     setError(null);
-  }, [open]);
+    if (event) {
+      setTitle(event.title);
+      setDescription(event.description ?? "");
+      setImageUrl(event.image_url ?? "");
+      setStartAt(toLocalInput(event.start_at));
+      setEndAt(event.end_at ? toLocalInput(event.end_at) : defaultDateTime(2));
+      setLocation(event.location ?? "");
+    } else {
+      setTitle("");
+      setDescription("");
+      setImageUrl("");
+      setStartAt(defaultDateTime(1));
+      setEndAt(defaultDateTime(2));
+      setLocation("");
+    }
+  }, [open, event]);
 
   async function handleSave() {
     if (!title.trim()) {
@@ -47,25 +77,46 @@ export function EventModal({ open, onClose, onCreated, userId }: Props) {
     setSaving(true);
     setError(null);
     const supabase = createClient();
-    const { data, error } = await supabase
-      .from("events")
-      .insert({
-        creator_id: userId,
-        title: title.trim(),
-        description: description.trim() || null,
-        image_url: imageUrl.trim() || null,
-        start_at: new Date(startAt).toISOString(),
-        end_at: endAt ? new Date(endAt).toISOString() : null,
-        location: location.trim() || null,
-      })
-      .select()
-      .single();
-    setSaving(false);
-    if (error) {
-      setError(error.message);
-      return;
+    const payload = {
+      title: title.trim(),
+      description: description.trim() || null,
+      image_url: imageUrl.trim() || null,
+      start_at: new Date(startAt).toISOString(),
+      end_at: endAt ? new Date(endAt).toISOString() : null,
+      location: location.trim() || null,
+    };
+
+    if (isEdit && event) {
+      const { data, error } = await supabase
+        .from("events")
+        .update(payload)
+        .eq("id", event.id)
+        .select()
+        .single();
+      setSaving(false);
+      if (error) { setError(error.message); return; }
+      onUpdated?.(data as CalendarEvent);
+    } else {
+      const { data, error } = await supabase
+        .from("events")
+        .insert({ creator_id: userId, ...payload })
+        .select()
+        .single();
+      setSaving(false);
+      if (error) { setError(error.message); return; }
+      onCreated(data as CalendarEvent);
     }
-    onCreated(data as CalendarEvent);
+    onClose();
+  }
+
+  async function handleDelete() {
+    if (!event) return;
+    setDeleting(true);
+    const supabase = createClient();
+    const { error } = await supabase.from("events").delete().eq("id", event.id);
+    setDeleting(false);
+    if (error) { setError(error.message); return; }
+    onDeleted?.(event.id);
     onClose();
   }
 
@@ -82,7 +133,7 @@ export function EventModal({ open, onClose, onCreated, userId }: Props) {
       >
         <header className="px-6 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
           <h2 className="text-base font-semibold tracking-tight">
-            Nuevo evento
+            {isEdit ? "Editar evento" : "Nuevo evento"}
           </h2>
           <button
             onClick={onClose}
@@ -155,20 +206,53 @@ export function EventModal({ open, onClose, onCreated, userId }: Props) {
           )}
         </div>
 
-        <footer className="px-6 py-4 flex justify-end gap-2 border-t border-black/5 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-950/30">
-          <button
-            onClick={onClose}
-            className="h-9 px-4 rounded-full text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="h-9 px-5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60"
-          >
-            {saving ? "Guardando…" : "Crear evento"}
-          </button>
+        <footer className="px-6 py-4 flex items-center justify-between gap-2 border-t border-black/5 dark:border-white/10 bg-zinc-50/50 dark:bg-zinc-950/30">
+          {isEdit ? (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-500">¿Eliminar?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="h-8 px-3 rounded-full bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition disabled:opacity-60"
+                >
+                  {deleting ? "Eliminando…" : "Sí, eliminar"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="h-8 px-3 rounded-full text-xs text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
+                title="Eliminar evento"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )
+          ) : (
+            <div />
+          )}
+
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="h-9 px-4 rounded-full text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="h-9 px-5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60"
+            >
+              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear evento"}
+            </button>
+          </div>
         </footer>
       </div>
     </div>

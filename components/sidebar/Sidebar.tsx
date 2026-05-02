@@ -9,6 +9,7 @@ import {
   UserCircle,
   Plus,
   LogOut,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -61,7 +62,16 @@ export function Sidebar({
             {userEmail ?? "Personal"}
           </p>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-1">
+          <a
+            href="/profile"
+            title="Editar perfil"
+            className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5"
+          >
+            <Settings className="h-4 w-4" />
+          </a>
+          <SignOutButton />
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 scrollbar-hidden">

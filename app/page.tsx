@@ -20,6 +20,7 @@ export default function HomePage() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,6 +52,36 @@ export default function HomePage() {
     })();
   }, []);
 
+  function openCreate() {
+    setEditingEvent(null);
+    setModalOpen(true);
+  }
+
+  function openEdit(ev: CalendarEvent) {
+    setEditingEvent(ev);
+    setModalOpen(true);
+  }
+
+  function handleCreated(ev: CalendarEvent) {
+    setEvents((prev) =>
+      [...prev, ev].sort(
+        (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+      )
+    );
+  }
+
+  function handleUpdated(ev: CalendarEvent) {
+    setEvents((prev) =>
+      prev
+        .map((e) => (e.id === ev.id ? ev : e))
+        .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
+    );
+  }
+
+  function handleDeleted(id: string) {
+    setEvents((prev) => prev.filter((e) => e.id !== id));
+  }
+
   if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center text-sm text-zinc-400">
@@ -72,21 +103,17 @@ export default function HomePage() {
       <CalendarArea
         selection={selection}
         events={events}
-        onNewEvent={() => setModalOpen(true)}
+        onNewEvent={openCreate}
+        onEventClick={openEdit}
       />
       <EventModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         userId={user.id}
-        onCreated={(ev) =>
-          setEvents((prev) =>
-            [...prev, ev].sort(
-              (a, b) =>
-                new Date(a.start_at).getTime() -
-                new Date(b.start_at).getTime()
-            )
-          )
-        }
+        event={editingEvent}
+        onCreated={handleCreated}
+        onUpdated={handleUpdated}
+        onDeleted={handleDeleted}
       />
     </div>
   );
