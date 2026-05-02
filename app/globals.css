@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-accent: #007aff;
+}
+
+html,
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* FullCalendar Apple-style overrides */
+.fc {
+  --fc-border-color: rgb(0 0 0 / 0.06);
+  --fc-today-bg-color: rgb(0 122 255 / 0.06);
+  --fc-event-bg-color: #007aff;
+  --fc-event-border-color: #007aff;
+  --fc-page-bg-color: transparent;
+  font-size: 13px;
+}
+
+.dark .fc {
+  --fc-border-color: rgb(255 255 255 / 0.08);
+  --fc-today-bg-color: rgb(0 122 255 / 0.12);
+  --fc-neutral-bg-color: rgb(255 255 255 / 0.02);
+  --fc-page-bg-color: transparent;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  padding: 6px 8px;
+  color: rgb(82 82 91);
+  text-decoration: none;
+}
+
+.dark .fc .fc-col-header-cell-cushion,
+.dark .fc .fc-daygrid-day-number {
+  color: rgb(212 212 216);
+}
+
+.fc .fc-event {
+  border-radius: 6px;
+  padding: 2px 4px;
+  border: none;
+  font-weight: 500;
+}
+
+.fc .fc-button {
+  background: transparent !important;
+  border: 1px solid rgb(0 0 0 / 0.08) !important;
+  color: rgb(39 39 42) !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  padding: 4px 12px !important;
+  text-transform: none !important;
+  box-shadow: none !important;
+}
+
+.dark .fc .fc-button {
+  border-color: rgb(255 255 255 / 0.1) !important;
+  color: rgb(228 228 231) !important;
+}
+
+.fc .fc-button:hover {
+  background: rgb(0 0 0 / 0.04) !important;
+}
+
+.dark .fc .fc-button:hover {
+  background: rgb(255 255 255 / 0.05) !important;
+}
+
+.fc .fc-button-primary:not(:disabled).fc-button-active {
+  background: rgb(0 122 255 / 0.1) !important;
+  border-color: rgb(0 122 255 / 0.3) !important;
+  color: #007aff !important;
+}
+
+/* Hide scrollbars in sidebar but allow scroll */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hidden {
+  scrollbar-width: none;
+}
