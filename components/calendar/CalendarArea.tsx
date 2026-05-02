@@ -10,6 +10,7 @@ import { EventFeed } from "./EventFeed";
 type Props = {
   selection: SidebarSelection;
   events: CalendarEvent[];
+  onNewEvent?: () => void;
 };
 
 function selectionLabel(s: SidebarSelection) {
@@ -17,7 +18,7 @@ function selectionLabel(s: SidebarSelection) {
   return s.name;
 }
 
-export function CalendarArea({ selection, events }: Props) {
+export function CalendarArea({ selection, events, onNewEvent }: Props) {
   const [view, setView] = useState<CalendarView>("grid");
 
   return (
@@ -34,7 +35,10 @@ export function CalendarArea({ selection, events }: Props) {
 
         <div className="flex items-center gap-2">
           <ViewToggle view={view} onChange={setView} />
-          <button className="ml-2 h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition">
+          <button
+            onClick={onNewEvent}
+            className="ml-2 h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition"
+          >
             <Plus className="h-4 w-4" />
             Nuevo
           </button>

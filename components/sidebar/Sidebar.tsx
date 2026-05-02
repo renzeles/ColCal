@@ -14,31 +14,21 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { SidebarSelection } from "@/lib/types";
 
-type Item = { id: string; name: string; avatar?: string | null };
-
-const MOCK_FRIENDS: Item[] = [
-  { id: "f1", name: "Juan López" },
-  { id: "f2", name: "María García" },
-  { id: "f3", name: "Sofía Pérez" },
-];
-const MOCK_GROUPS: Item[] = [
-  { id: "g1", name: "Familia" },
-  { id: "g2", name: "Trabajo" },
-  { id: "g3", name: "Amigos del fútbol" },
-];
-const MOCK_PLACES: Item[] = [
-  { id: "p1", name: "Bar El Toro" },
-  { id: "p2", name: "Restó La Plaza" },
-];
-
 type Props = {
   selection: SidebarSelection;
   onSelect: (s: SidebarSelection) => void;
-  userName?: string;
+  userName?: string | null;
   userAvatar?: string | null;
+  userEmail?: string | null;
 };
 
-export function Sidebar({ selection, onSelect, userName, userAvatar }: Props) {
+export function Sidebar({
+  selection,
+  onSelect,
+  userName,
+  userAvatar,
+  userEmail,
+}: Props) {
   return (
     <aside className="w-[260px] shrink-0 h-screen bg-zinc-100/70 dark:bg-zinc-900/40 border-r border-black/5 dark:border-white/5 flex flex-col backdrop-blur-xl">
       <div className="px-4 pt-5 pb-4 flex items-center gap-3">
@@ -53,8 +43,12 @@ export function Sidebar({ selection, onSelect, userName, userAvatar }: Props) {
           <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600" />
         )}
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold truncate">{userName ?? "Tú"}</p>
-          <p className="text-xs text-zinc-500 truncate">Personal</p>
+          <p className="text-sm font-semibold truncate">
+            {userName ?? "Usuario"}
+          </p>
+          <p className="text-xs text-zinc-500 truncate">
+            {userEmail ?? "Personal"}
+          </p>
         </div>
         <SignOutButton />
       </div>
@@ -66,47 +60,17 @@ export function Sidebar({ selection, onSelect, userName, userAvatar }: Props) {
         />
 
         <Section title="Amigos" icon={<Users className="h-3.5 w-3.5" />}>
-          {MOCK_FRIENDS.map((f) => (
-            <Row
-              key={f.id}
-              label={f.name}
-              active={selection.kind === "friend" && selection.id === f.id}
-              onClick={() =>
-                onSelect({ kind: "friend", id: f.id, name: f.name })
-              }
-              dot="bg-emerald-400"
-            />
-          ))}
+          <EmptyHint text="Todavía no agregaste amigos" />
           <AddButton label="Agregar amigo" />
         </Section>
 
         <Section title="Grupos" icon={<UserCircle className="h-3.5 w-3.5" />}>
-          {MOCK_GROUPS.map((g) => (
-            <Row
-              key={g.id}
-              label={g.name}
-              active={selection.kind === "group" && selection.id === g.id}
-              onClick={() =>
-                onSelect({ kind: "group", id: g.id, name: g.name })
-              }
-              dot="bg-purple-400"
-            />
-          ))}
+          <EmptyHint text="Sin grupos" />
           <AddButton label="Crear grupo" />
         </Section>
 
         <Section title="Lugares" icon={<MapPin className="h-3.5 w-3.5" />}>
-          {MOCK_PLACES.map((p) => (
-            <Row
-              key={p.id}
-              label={p.name}
-              active={selection.kind === "place" && selection.id === p.id}
-              onClick={() =>
-                onSelect({ kind: "place", id: p.id, name: p.name })
-              }
-              dot="bg-orange-400"
-            />
-          ))}
+          <EmptyHint text="Sin lugares" />
           <AddButton label="Agregar lugar" />
         </Section>
       </nav>
@@ -167,30 +131,11 @@ function Section({
   );
 }
 
-function Row({
-  label,
-  active,
-  onClick,
-  dot,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-  dot?: string;
-}) {
+function EmptyHint({ text }: { text: string }) {
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors",
-        active
-          ? "bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white font-medium"
-          : "text-zinc-600 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5"
-      )}
-    >
-      {dot && <span className={cn("h-2 w-2 rounded-full", dot)} />}
-      <span className="truncate">{label}</span>
-    </button>
+    <p className="px-2.5 py-1 text-xs text-zinc-400 dark:text-zinc-500 italic">
+      {text}
+    </p>
   );
 }
 

@@ -1,96 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { CalendarArea } from "@/components/calendar/CalendarArea";
+import { EventModal } from "@/components/calendar/EventModal";
+import { createClient } from "@/lib/supabase/client";
 import type { CalendarEvent, SidebarSelection } from "@/lib/types";
 
-const today = new Date();
-function iso(daysOffset: number, hour = 20, min = 0) {
-  const d = new Date(today);
-  d.setDate(d.getDate() + daysOffset);
-  d.setHours(hour, min, 0, 0);
-  return d.toISOString();
-}
-
-const MOCK_EVENTS: CalendarEvent[] = [
-  {
-    id: "1",
-    creator_id: "me",
-    title: "Cena en Lo de Fer",
-    description: "Una noche tranqui con vino y picada. Llevar postre.",
-    image_url:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=600",
-    start_at: iso(0, 21),
-    end_at: iso(0, 23),
-    location: "Av. Cabildo 1234",
-    is_public: false,
-    created_at: today.toISOString(),
-  },
-  {
-    id: "2",
-    creator_id: "me",
-    title: "Cumple de Lucas",
-    description: "Trae algo rico para compartir 🎉",
-    image_url:
-      "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?w=600",
-    start_at: iso(2, 18),
-    end_at: iso(2, 23),
-    location: "Casa de Lucas",
-    is_public: false,
-    created_at: today.toISOString(),
-  },
-  {
-    id: "3",
-    creator_id: "me",
-    title: "Reunión de equipo",
-    description: "Revisar roadmap Q3.",
-    image_url: null,
-    start_at: iso(1, 10),
-    end_at: iso(1, 11),
-    location: "Oficina",
-    is_public: false,
-    created_at: today.toISOString(),
-  },
-  {
-    id: "4",
-    creator_id: "me",
-    title: "Yoga al amanecer",
-    description: "Clase outdoor en el parque.",
-    image_url:
-      "https://images.unsplash.com/photo-1545205597-3d9d02c29597?w=600",
-    start_at: iso(3, 7),
-    end_at: iso(3, 8, 30),
-    location: "Parque Centenario",
-    is_public: true,
-    created_at: today.toISOString(),
-  },
-  {
-    id: "5",
-    creator_id: "me",
-    title: "Concierto Indie",
-    description: "Banda nueva en Niceto.",
-    image_url:
-      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=600",
-    start_at: iso(5, 22),
-    end_at: iso(6, 1),
-    location: "Niceto Club",
-    is_public: false,
-    created_at: today.toISOString(),
-  },
-];
+type UserInfo = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  avatar: string | null;
+};
 
 export default function HomePage() {
   const [selection, setSelection] = useState<SidebarSelection>({ kind: "self" });
+  const [user, setUser] = useState<UserInfo | null>(null);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const u = auth.user;
+      if (!u) {
+        window.location.href = "/login";
+        return;
+      }
+      setUser({
+        id: u.id,
+        name:
+          (u.user_metadata?.full_name as string) ??
+          (u.user_metadata?.name as string) ??
+          null,
+        email: u.email ?? null,
+        avatar: (u.user_metadata?.avatar_url as string) ?? null,
+      });
+
+      const { data: rows } = await supabase
+        .from("events")
+        .select("*")
+        .order("start_at", { ascending: true });
+      setEvents((rows ?? []) as CalendarEvent[]);
+      setLoading(false);
+    })();
+  }, []);
+
+  if (loading || !user) {
+    return (
+      <div className="flex h-screen items-center justify-center text-sm text-zinc-400">
+        Cargando…
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar
         selection={selection}
         onSelect={setSelection}
-        userName="Renzo"
+        userName={user.name}
+        userAvatar={user.avatar}
+        userEmail={user.email}
       />
-      <CalendarArea selection={selection} events={MOCK_EVENTS} />
+      <CalendarArea
+        selection={selection}
+        events={events}
+        onNewEvent={() => setModalOpen(true)}
+      />
+      <EventModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        userId={user.id}
+        onCreated={(ev) =>
+          setEvents((prev) =>
+            [...prev, ev].sort(
+              (a, b) =>
+                new Date(a.start_at).getTime() -
+                new Date(b.start_at).getTime()
+            )
+          )
+        }
+      />
     </div>
   );
 }
