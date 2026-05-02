@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sidebar } from "@/components/sidebar/Sidebar";
+import { Sidebar, type Friend } from "@/components/sidebar/Sidebar";
 import { CalendarArea } from "@/components/calendar/CalendarArea";
 import { EventModal } from "@/components/calendar/EventModal";
 import { createClient } from "@/lib/supabase/client";
@@ -18,6 +18,7 @@ export default function HomePage() {
   const [selection, setSelection] = useState<SidebarSelection>({ kind: "self" });
   const [user, setUser] = useState<UserInfo | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -40,11 +41,12 @@ export default function HomePage() {
         avatar: (u.user_metadata?.avatar_url as string) ?? null,
       });
 
-      const { data: rows } = await supabase
-        .from("events")
-        .select("*")
-        .order("start_at", { ascending: true });
+      const [{ data: rows }, { data: friendRows }] = await Promise.all([
+        supabase.from("events").select("*").order("start_at", { ascending: true }),
+        supabase.rpc("list_friends"),
+      ]);
       setEvents((rows ?? []) as CalendarEvent[]);
+      setFriends((friendRows ?? []) as Friend[]);
       setLoading(false);
     })();
   }, []);
@@ -65,6 +67,7 @@ export default function HomePage() {
         userName={user.name}
         userAvatar={user.avatar}
         userEmail={user.email}
+        friends={friends}
       />
       <CalendarArea
         selection={selection}

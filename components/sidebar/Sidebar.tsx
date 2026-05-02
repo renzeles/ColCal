@@ -13,6 +13,13 @@ import {
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { SidebarSelection } from "@/lib/types";
+import { InviteFriendModal } from "./InviteFriendModal";
+
+export type Friend = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+};
 
 type Props = {
   selection: SidebarSelection;
@@ -20,6 +27,7 @@ type Props = {
   userName?: string | null;
   userAvatar?: string | null;
   userEmail?: string | null;
+  friends: Friend[];
 };
 
 export function Sidebar({
@@ -28,7 +36,10 @@ export function Sidebar({
   userName,
   userAvatar,
   userEmail,
+  friends,
 }: Props) {
+  const [inviteOpen, setInviteOpen] = useState(false);
+
   return (
     <aside className="w-[260px] shrink-0 h-screen bg-zinc-100/70 dark:bg-zinc-900/40 border-r border-black/5 dark:border-white/5 flex flex-col backdrop-blur-xl">
       <div className="px-4 pt-5 pb-4 flex items-center gap-3">
@@ -60,8 +71,29 @@ export function Sidebar({
         />
 
         <Section title="Amigos" icon={<Users className="h-3.5 w-3.5" />}>
-          <EmptyHint text="Todavía no agregaste amigos" />
-          <AddButton label="Agregar amigo" />
+          {friends.length === 0 ? (
+            <EmptyHint text="Todavía no agregaste amigos" />
+          ) : (
+            friends.map((f) => (
+              <FriendRow
+                key={f.id}
+                friend={f}
+                active={selection.kind === "friend" && selection.id === f.id}
+                onClick={() =>
+                  onSelect({
+                    kind: "friend",
+                    id: f.id,
+                    name: f.full_name ?? "Amigo",
+                    avatar: f.avatar_url,
+                  })
+                }
+              />
+            ))
+          )}
+          <AddButton
+            label="Invitar amigo"
+            onClick={() => setInviteOpen(true)}
+          />
         </Section>
 
         <Section title="Grupos" icon={<UserCircle className="h-3.5 w-3.5" />}>
@@ -74,6 +106,11 @@ export function Sidebar({
           <AddButton label="Agregar lugar" />
         </Section>
       </nav>
+
+      <InviteFriendModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+      />
     </aside>
   );
 }
@@ -97,6 +134,40 @@ function SelfRow({
     >
       <CalendarIcon className="h-4 w-4 text-blue-500" />
       Mi calendario
+    </button>
+  );
+}
+
+function FriendRow({
+  friend,
+  active,
+  onClick,
+}: {
+  friend: Friend;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors",
+        active
+          ? "bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white font-medium"
+          : "text-zinc-600 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5"
+      )}
+    >
+      {friend.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={friend.avatar_url}
+          alt=""
+          className="h-5 w-5 rounded-full object-cover"
+        />
+      ) : (
+        <span className="h-5 w-5 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500" />
+      )}
+      <span className="truncate">{friend.full_name ?? "Amigo"}</span>
     </button>
   );
 }
@@ -139,9 +210,18 @@ function EmptyHint({ text }: { text: string }) {
   );
 }
 
-function AddButton({ label }: { label: string }) {
+function AddButton({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick?: () => void;
+}) {
   return (
-    <button className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+    >
       <Plus className="h-3.5 w-3.5" />
       {label}
     </button>
