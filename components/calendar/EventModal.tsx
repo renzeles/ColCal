@@ -46,6 +46,7 @@ export function EventModal({
   const [startAt, setStartAt] = useState(defaultDateTime(1));
   const [endAt, setEndAt] = useState(defaultDateTime(2));
   const [location, setLocation] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -62,6 +63,7 @@ export function EventModal({
       setStartAt(toLocalInput(event.start_at));
       setEndAt(event.end_at ? toLocalInput(event.end_at) : defaultDateTime(2));
       setLocation(event.location ?? "");
+      setIsPublic(event.is_public ?? false);
     } else {
       setTitle("");
       setDescription("");
@@ -69,6 +71,7 @@ export function EventModal({
       setStartAt(defaultDateTime(1));
       setEndAt(defaultDateTime(2));
       setLocation("");
+      setIsPublic(false);
     }
   }, [open, event]);
 
@@ -87,6 +90,7 @@ export function EventModal({
       start_at: new Date(startAt).toISOString(),
       end_at: endAt ? new Date(endAt).toISOString() : null,
       location: location.trim() || null,
+      is_public: isPublic,
     };
 
     if (isEdit && event) {
@@ -201,6 +205,22 @@ export function EventModal({
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
             />
           </Field>
+
+          <button
+            type="button"
+            onClick={() => setIsPublic((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-black/5 dark:border-white/5 text-sm"
+          >
+            <span className="text-zinc-700 dark:text-zinc-300">{t.privacy.public_label}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400">
+                {isPublic ? t.privacy.public_hint : t.privacy.private_hint}
+              </span>
+              <div className={`w-9 h-5 rounded-full transition-colors ${isPublic ? "bg-blue-500" : "bg-zinc-200 dark:bg-zinc-700"}`}>
+                <div className={`h-5 w-5 rounded-full bg-white shadow-sm transform transition-transform ${isPublic ? "translate-x-4" : "translate-x-0"}`} />
+              </div>
+            </div>
+          </button>
 
           {error && (
             <p className="text-xs text-red-500 bg-red-50 dark:bg-red-950/30 px-3 py-2 rounded-lg">

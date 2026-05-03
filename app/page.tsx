@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Sidebar, type Friend } from "@/components/sidebar/Sidebar";
 import { CalendarArea } from "@/components/calendar/CalendarArea";
 import { EventModal } from "@/components/calendar/EventModal";
 import { createClient } from "@/lib/supabase/client";
-import type { CalendarEvent, SidebarSelection } from "@/lib/types";
+import type { AppNotification, CalendarEvent, PermissionStatus, SidebarSelection } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 type UserInfo = {
   id: string;
@@ -15,10 +16,15 @@ type UserInfo = {
 };
 
 export default function HomePage() {
+  const { t } = useT();
   const [selection, setSelection] = useState<SidebarSelection>({ kind: "self" });
   const [user, setUser] = useState<UserInfo | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [displayedEvents, setDisplayedEvents] = useState<CalendarEvent[]>([]);
+  const [friendPermission, setFriendPermission] = useState<PermissionStatus>("none");
+  const [requestingAccess, setRequestingAccess] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,28 +34,81 @@ export default function HomePage() {
     (async () => {
       const { data: auth } = await supabase.auth.getUser();
       const u = auth.user;
-      if (!u) {
-        window.location.href = "/login";
-        return;
-      }
+      if (!u) { window.location.href = "/login"; return; }
       setUser({
         id: u.id,
-        name:
-          (u.user_metadata?.full_name as string) ??
-          (u.user_metadata?.name as string) ??
-          null,
+        name: (u.user_metadata?.full_name as string) ?? (u.user_metadata?.name as string) ?? null,
         email: u.email ?? null,
         avatar: (u.user_metadata?.avatar_url as string) ?? null,
       });
 
-      const [{ data: rows }, { data: friendRows }] = await Promise.all([
+      const [{ data: rows }, { data: friendRows }, { data: notifRows }] = await Promise.all([
         supabase.from("events").select("*").order("start_at", { ascending: true }),
         supabase.rpc("list_friends"),
+        supabase.rpc("get_notifications"),
       ]);
       setEvents((rows ?? []) as CalendarEvent[]);
+      setDisplayedEvents((rows ?? []) as CalendarEvent[]);
       setFriends((friendRows ?? []) as Friend[]);
+      setNotifications((notifRows ?? []) as AppNotification[]);
       setLoading(false);
     })();
+  }, []);
+
+  // When selection changes to a friend, load their events + permission status
+  useEffect(() => {
+    if (selection.kind === "self") {
+      setDisplayedEvents(events);
+      setFriendPermission("none");
+      return;
+    }
+    if (selection.kind !== "friend") return;
+    const friendId = selection.id;
+    const supabase = createClient();
+    (async () => {
+      const [{ data: evRows }, { data: permStatus }] = await Promise.all([
+        supabase.rpc("get_friend_events", { _friend_id: friendId }),
+        supabase.rpc("get_calendar_permission_status", { _owner_id: friendId }),
+      ]);
+      setDisplayedEvents((evRows ?? []) as CalendarEvent[]);
+      setFriendPermission((permStatus as PermissionStatus) ?? "none");
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection]);
+
+  // Keep own events in sync with displayedEvents when selection is self
+  useEffect(() => {
+    if (selection.kind === "self") setDisplayedEvents(events);
+  }, [events, selection]);
+
+  async function handleRequestAccess() {
+    if (selection.kind !== "friend") return;
+    setRequestingAccess(true);
+    const supabase = createClient();
+    await supabase.rpc("request_calendar_access", { _owner_id: selection.id });
+    setFriendPermission("pending");
+    setRequestingAccess(false);
+  }
+
+  async function handleRespondNotification(fromUserId: string, approved: boolean) {
+    const supabase = createClient();
+    await supabase.rpc("respond_calendar_request", {
+      _viewer_id: fromUserId,
+      _approved: approved,
+    });
+    setNotifications((prev) =>
+      prev.map((n) =>
+        n.type === "calendar_request" && n.from_user_id === fromUserId
+          ? { ...n, read: true }
+          : n
+      )
+    );
+  }
+
+  const handleMarkNotificationsRead = useCallback(async () => {
+    const supabase = createClient();
+    await supabase.rpc("mark_notifications_read");
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
   function openCreate() {
@@ -64,16 +123,13 @@ export default function HomePage() {
 
   function handleCreated(ev: CalendarEvent) {
     setEvents((prev) =>
-      [...prev, ev].sort(
-        (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
-      )
+      [...prev, ev].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
     );
   }
 
   function handleUpdated(ev: CalendarEvent) {
     setEvents((prev) =>
-      prev
-        .map((e) => (e.id === ev.id ? ev : e))
+      prev.map((e) => (e.id === ev.id ? ev : e))
         .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
     );
   }
@@ -85,7 +141,7 @@ export default function HomePage() {
   if (loading || !user) {
     return (
       <div className="flex h-screen items-center justify-center text-sm text-zinc-400">
-        Cargando…
+        {t.loading}
       </div>
     );
   }
@@ -102,9 +158,15 @@ export default function HomePage() {
       />
       <CalendarArea
         selection={selection}
-        events={events}
+        events={displayedEvents}
         onNewEvent={openCreate}
         onEventClick={openEdit}
+        notifications={notifications}
+        onRespondNotification={handleRespondNotification}
+        onMarkNotificationsRead={handleMarkNotificationsRead}
+        friendPermission={friendPermission}
+        onRequestAccess={handleRequestAccess}
+        requestingAccess={requestingAccess}
       />
       <EventModal
         open={modalOpen}

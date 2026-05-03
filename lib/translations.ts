@@ -115,6 +115,28 @@ const es = {
     year: "Año",
     locale: "es",
   },
+  privacy: {
+    public_label: "Público",
+    public_hint: "Cualquier amigo puede ver este evento",
+    private_hint: "Solo vos podés ver este evento",
+    friend_public_only: "Solo eventos públicos",
+    request_full_access: "Solicitar acceso completo",
+    access_pending: "Solicitud enviada",
+    access_approved: "Acceso completo",
+    access_rejected: "Acceso rechazado",
+    requesting: "Enviando…",
+  },
+  notifications: {
+    title: "Notificaciones",
+    empty: "No hay notificaciones",
+    calendar_request: (name: string) => `${name} quiere ver tu calendario completo`,
+    calendar_approved: (name: string) => `${name} aprobó tu solicitud de acceso`,
+    calendar_rejected: (name: string) => `${name} rechazó tu solicitud de acceso`,
+    approve: "Aprobar",
+    reject: "Rechazar",
+    responding: "…",
+    someone: "Alguien",
+  },
 };
 
 const en: typeof es = {
@@ -231,6 +253,28 @@ const en: typeof es = {
     day: "Day",
     year: "Year",
     locale: "en",
+  },
+  privacy: {
+    public_label: "Public",
+    public_hint: "Any friend can see this event",
+    private_hint: "Only you can see this event",
+    friend_public_only: "Public events only",
+    request_full_access: "Request full access",
+    access_pending: "Request sent",
+    access_approved: "Full access",
+    access_rejected: "Access rejected",
+    requesting: "Sending…",
+  },
+  notifications: {
+    title: "Notifications",
+    empty: "No notifications",
+    calendar_request: (name: string) => `${name} wants to see your full calendar`,
+    calendar_approved: (name: string) => `${name} approved your access request`,
+    calendar_rejected: (name: string) => `${name} declined your access request`,
+    approve: "Approve",
+    reject: "Decline",
+    responding: "…",
+    someone: "Someone",
   },
 };
 

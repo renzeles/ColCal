@@ -1,36 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { LayoutGrid, List, Plus } from "lucide-react";
+import { LayoutGrid, List, Plus, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { CalendarEvent, CalendarView, SidebarSelection } from "@/lib/types";
+import type { AppNotification, CalendarEvent, CalendarView, PermissionStatus, SidebarSelection } from "@/lib/types";
 import { GridCalendar } from "./GridCalendar";
 import { EventFeed } from "./EventFeed";
 import { useT } from "@/lib/i18n";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 type Props = {
   selection: SidebarSelection;
   events: CalendarEvent[];
   onNewEvent?: () => void;
   onEventClick?: (e: CalendarEvent) => void;
+  notifications: AppNotification[];
+  onRespondNotification: (fromUserId: string, approved: boolean) => Promise<void>;
+  onMarkNotificationsRead: () => void;
+  friendPermission?: PermissionStatus;
+  onRequestAccess?: () => void;
+  requestingAccess?: boolean;
 };
 
-function selectionLabel(s: SidebarSelection, myCalendarLabel: string) {
-  if (s.kind === "self") return myCalendarLabel;
-  return s.name;
-}
-
-export function CalendarArea({ selection, events, onNewEvent, onEventClick }: Props) {
+export function CalendarArea({
+  selection,
+  events,
+  onNewEvent,
+  onEventClick,
+  notifications,
+  onRespondNotification,
+  onMarkNotificationsRead,
+  friendPermission,
+  onRequestAccess,
+  requestingAccess,
+}: Props) {
   const { t } = useT();
   const [view, setView] = useState<CalendarView>("grid");
+  const isFriend = selection.kind === "friend";
+
+  const title = selection.kind === "self"
+    ? t.sidebar.my_calendar
+    : "name" in selection ? selection.name : t.sidebar.my_calendar;
 
   return (
     <div className="flex-1 h-screen flex flex-col">
       <header className="px-8 pt-6 pb-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">
-            {selectionLabel(selection, t.sidebar.my_calendar)}
-          </h1>
+          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
           <p className="text-xs text-zinc-500 mt-0.5">
             {events.length}{" "}
             {events.length === 1 ? t.calendar.events_one : t.calendar.events_other}
@@ -39,25 +55,77 @@ export function CalendarArea({ selection, events, onNewEvent, onEventClick }: Pr
 
         <div className="flex items-center gap-2">
           <ViewToggle view={view} onChange={setView} />
-          <button
-            onClick={onNewEvent}
-            className="ml-2 h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition"
-          >
-            <Plus className="h-4 w-4" />
-            {t.calendar.new_button}
-          </button>
+          <NotificationBell
+            notifications={notifications}
+            onRespond={onRespondNotification}
+            onMarkRead={onMarkNotificationsRead}
+          />
+          {!isFriend && (
+            <button
+              onClick={onNewEvent}
+              className="ml-1 h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition"
+            >
+              <Plus className="h-4 w-4" />
+              {t.calendar.new_button}
+            </button>
+          )}
         </div>
       </header>
+
+      {isFriend && friendPermission !== "approved" && (
+        <FriendAccessBanner
+          status={friendPermission ?? "none"}
+          onRequest={onRequestAccess}
+          requesting={requestingAccess}
+        />
+      )}
 
       <div className="flex-1 overflow-hidden p-6">
         {view === "grid" ? (
           <div className="h-full bg-white dark:bg-zinc-900/40 rounded-2xl border border-black/5 dark:border-white/5 p-4 shadow-sm">
-            <GridCalendar events={events} onEventClick={onEventClick} />
+            <GridCalendar events={events} onEventClick={isFriend ? undefined : onEventClick} />
           </div>
         ) : (
-          <EventFeed events={events} onEventClick={onEventClick} />
+          <EventFeed events={events} onEventClick={isFriend ? undefined : onEventClick} />
         )}
       </div>
+    </div>
+  );
+}
+
+function FriendAccessBanner({
+  status,
+  onRequest,
+  requesting,
+}: {
+  status: PermissionStatus;
+  onRequest?: () => void;
+  requesting?: boolean;
+}) {
+  const { t } = useT();
+  const pr = t.privacy;
+
+  return (
+    <div className="mx-8 mt-3 px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-black/5 dark:border-white/5 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        <Lock className="h-3.5 w-3.5 shrink-0" />
+        <span>{pr.friend_public_only}</span>
+      </div>
+      {status === "none" && (
+        <button
+          onClick={onRequest}
+          disabled={requesting}
+          className="shrink-0 h-7 px-3 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-xs font-medium hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60"
+        >
+          {requesting ? pr.requesting : pr.request_full_access}
+        </button>
+      )}
+      {status === "pending" && (
+        <span className="shrink-0 text-xs text-zinc-400 italic">{pr.access_pending}</span>
+      )}
+      {status === "rejected" && (
+        <span className="shrink-0 text-xs text-red-400">{pr.access_rejected}</span>
+      )}
     </div>
   );
 }
@@ -72,18 +140,10 @@ function ViewToggle({
   const { t } = useT();
   return (
     <div className="inline-flex items-center p-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/60 border border-black/5 dark:border-white/5">
-      <ToggleBtn
-        active={view === "grid"}
-        onClick={() => onChange("grid")}
-        label={t.calendar.grid_label}
-      >
+      <ToggleBtn active={view === "grid"} onClick={() => onChange("grid")} label={t.calendar.grid_label}>
         <LayoutGrid className="h-3.5 w-3.5" />
       </ToggleBtn>
-      <ToggleBtn
-        active={view === "feed"}
-        onClick={() => onChange("feed")}
-        label={t.calendar.feed_label}
-      >
+      <ToggleBtn active={view === "feed"} onClick={() => onChange("feed")} label={t.calendar.feed_label}>
         <List className="h-3.5 w-3.5" />
       </ToggleBtn>
     </div>
@@ -91,15 +151,9 @@ function ViewToggle({
 }
 
 function ToggleBtn({
-  active,
-  onClick,
-  label,
-  children,
+  active, onClick, label, children,
 }: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-  children: React.ReactNode;
+  active: boolean; onClick: () => void; label: string; children: React.ReactNode;
 }) {
   return (
     <button

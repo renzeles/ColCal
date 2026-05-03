@@ -84,6 +84,15 @@ body {
   color: #007aff !important;
 }
 
+/* Days outside current month — match container background */
+.fc .fc-day-other {
+  background-color: transparent !important;
+}
+
+.fc .fc-day-other .fc-daygrid-day-number {
+  opacity: 0.25;
+}
+
 /* Hide scrollbars in sidebar but allow scroll */
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;
