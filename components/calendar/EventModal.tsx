@@ -5,6 +5,7 @@ import { X, Calendar, Clock, MapPin, FileText, Image as ImageIcon, Trash2 } from
 import { createClient } from "@/lib/supabase/client";
 import type { CalendarEvent } from "@/lib/types";
 import { useT } from "@/lib/i18n";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 
 type Props = {
   open: boolean;
@@ -198,11 +199,11 @@ export function EventModal({
           </Field>
 
           <Field icon={<ImageIcon className="h-4 w-4" />}>
-            <input
+            <ImageUpload
               value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
+              onChange={setImageUrl}
               placeholder={em.image_placeholder}
-              className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
+              previewClass="h-28 w-full"
             />
           </Field>
 

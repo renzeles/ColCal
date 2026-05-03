@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { SidebarSelection } from "@/lib/types";
 import { InviteFriendModal } from "./InviteFriendModal";
+import { CreateGroupModal } from "./CreateGroupModal";
 import { useT } from "@/lib/i18n";
 import { LangToggle } from "./LangToggle";
 
@@ -43,6 +44,7 @@ export function Sidebar({
 }: Props) {
   const { t } = useT();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
 
   return (
     <aside className="w-[260px] shrink-0 h-screen bg-zinc-100/70 dark:bg-zinc-900/40 border-r border-black/5 dark:border-white/5 flex flex-col backdrop-blur-xl">
@@ -114,7 +116,7 @@ export function Sidebar({
 
         <Section title={t.sidebar.groups} icon={<UserCircle className="h-3.5 w-3.5" />}>
           <EmptyHint text={t.sidebar.no_groups} />
-          <AddButton label={t.sidebar.create_group} />
+          <AddButton label={t.sidebar.create_group} onClick={() => setGroupOpen(true)} />
         </Section>
 
         <Section title={t.sidebar.places} icon={<MapPin className="h-3.5 w-3.5" />}>
@@ -126,6 +128,10 @@ export function Sidebar({
       <InviteFriendModal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
+      />
+      <CreateGroupModal
+        open={groupOpen}
+        onClose={() => setGroupOpen(false)}
       />
     </aside>
   );

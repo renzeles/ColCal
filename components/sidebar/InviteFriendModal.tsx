@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Copy, Check, Link2, MessageCircle, Mail, Share2 } from "lucide-react";
+import { X, Copy, Check, Link2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n";
 
@@ -43,10 +43,7 @@ export function InviteFriendModal({ open, onClose }: Props) {
       .select("id")
       .single();
     setGenerating(false);
-    if (error) {
-      setError(error.message);
-      return;
-    }
+    if (error) { setError(error.message); return; }
     setLink(`${window.location.origin}/invite/${data.id}`);
   }
 
@@ -56,26 +53,6 @@ export function InviteFriendModal({ open, onClose }: Props) {
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   }
-
-  function shareNative() {
-    if (!link) return;
-    navigator.share?.({ title: im.share_title, text: im.share_desc, url: link });
-  }
-
-  function shareWhatsApp() {
-    if (!link) return;
-    const text = encodeURIComponent(`${im.share_text}${link}`);
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  }
-
-  function shareEmail() {
-    if (!link) return;
-    const subject = encodeURIComponent(im.email_subject);
-    const body = encodeURIComponent(im.email_body(link));
-    window.open(`mailto:?subject=${subject}&body=${body}`);
-  }
-
-  const canNativeShare = typeof navigator !== "undefined" && !!navigator.share;
 
   if (!open) return null;
 
@@ -128,7 +105,6 @@ export function InviteFriendModal({ open, onClose }: Props) {
                   onClick={(e) => (e.target as HTMLInputElement).select()}
                 />
               </div>
-
               <button
                 onClick={copy}
                 className={`w-full h-11 rounded-full font-medium text-sm flex items-center justify-center gap-2 transition hover:scale-[1.02] active:scale-[0.98] ${
@@ -137,41 +113,8 @@ export function InviteFriendModal({ open, onClose }: Props) {
                     : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
                 }`}
               >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4" />
-                    {im.copied}
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4" />
-                    {im.copy}
-                  </>
-                )}
+                {copied ? <><Check className="h-4 w-4" />{im.copied}</> : <><Copy className="h-4 w-4" />{im.copy}</>}
               </button>
-
-              <div className="flex gap-2">
-                <ShareBtn
-                  onClick={shareWhatsApp}
-                  icon={<MessageCircle className="h-4 w-4" />}
-                  label={im.whatsapp}
-                  className="bg-[#25D366] text-white hover:bg-[#20b958]"
-                />
-                <ShareBtn
-                  onClick={shareEmail}
-                  icon={<Mail className="h-4 w-4" />}
-                  label={im.email}
-                  className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                />
-                {canNativeShare && (
-                  <ShareBtn
-                    onClick={shareNative}
-                    icon={<Share2 className="h-4 w-4" />}
-                    label={im.more}
-                    className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                  />
-                )}
-              </div>
             </>
           )}
 
@@ -183,27 +126,5 @@ export function InviteFriendModal({ open, onClose }: Props) {
         </div>
       </div>
     </div>
-  );
-}
-
-function ShareBtn({
-  onClick,
-  icon,
-  label,
-  className,
-}: {
-  onClick: () => void;
-  icon: React.ReactNode;
-  label: string;
-  className: string;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 h-10 rounded-full text-xs font-medium flex items-center justify-center gap-1.5 transition hover:scale-[1.02] active:scale-[0.98] ${className}`}
-    >
-      {icon}
-      {label}
-    </button>
   );
 }

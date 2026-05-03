@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, User, AtSign, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -108,11 +109,12 @@ export default function ProfilePage() {
             </div>
 
             <Field icon={<Camera className="h-4 w-4" />} label={pr.avatar_label}>
-              <input
+              <ImageUpload
                 value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
+                onChange={setAvatarUrl}
+                bucket="avatars"
                 placeholder="https://..."
-                className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
+                previewClass="h-20 w-20 rounded-full overflow-hidden mx-auto"
               />
             </Field>
 

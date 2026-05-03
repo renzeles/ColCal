@@ -93,6 +93,26 @@ body {
   opacity: 0.25;
 }
 
+/* Custom dark-blue scrollbar (site-wide) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1a4080;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1e3a5f transparent;
+}
+
 /* Hide scrollbars in sidebar but allow scroll */
 .scrollbar-hidden::-webkit-scrollbar {
   display: none;

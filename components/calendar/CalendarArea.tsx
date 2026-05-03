@@ -41,16 +41,27 @@ export function CalendarArea({
   const title = selection.kind === "self"
     ? t.sidebar.my_calendar
     : "name" in selection ? selection.name : t.sidebar.my_calendar;
+  const friendAvatar = selection.kind === "friend" ? selection.avatar : null;
 
   return (
     <div className="flex-1 h-screen flex flex-col">
       <header className="px-8 pt-6 pb-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
+        <div className="flex items-center gap-3">
+          {isFriend && (
+            friendAvatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={friendAvatar} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-black/5 dark:ring-white/10 shrink-0" />
+            ) : (
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 shrink-0" />
+            )
+          )}
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+            <p className="text-xs text-zinc-500 mt-0.5">
             {events.length}{" "}
             {events.length === 1 ? t.calendar.events_one : t.calendar.events_other}
           </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
