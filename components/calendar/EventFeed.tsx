@@ -3,8 +3,10 @@
 import { useMemo } from "react";
 import { format, isSameDay } from "date-fns";
 import { es } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { EventCard } from "./EventCard";
 import type { CalendarEvent } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   events: CalendarEvent[];
@@ -12,6 +14,9 @@ type Props = {
 };
 
 export function EventFeed({ events, onEventClick }: Props) {
+  const { t, lang } = useT();
+  const locale = lang === "es" ? es : enUS;
+
   const grouped = useMemo(() => {
     const sorted = [...events].sort(
       (a, b) =>
@@ -34,11 +39,9 @@ export function EventFeed({ events, onEventClick }: Props) {
           <span className="text-2xl">📅</span>
         </div>
         <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          No hay eventos todavía
+          {t.feed.empty_title}
         </p>
-        <p className="text-xs text-zinc-500 mt-1">
-          Creá tu primer evento con el botón +
-        </p>
+        <p className="text-xs text-zinc-500 mt-1">{t.feed.empty_subtitle}</p>
       </div>
     );
   }
@@ -50,7 +53,7 @@ export function EventFeed({ events, onEventClick }: Props) {
           <section key={g.day.toISOString()}>
             <div className="sticky top-0 z-10 bg-zinc-50/80 dark:bg-zinc-950/80 backdrop-blur-md py-2 mb-3">
               <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                {format(g.day, "EEEE d 'de' MMMM", { locale: es })}
+                {format(g.day, lang === "es" ? "EEEE d 'de' MMMM" : "EEEE, MMMM d", { locale })}
               </h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">

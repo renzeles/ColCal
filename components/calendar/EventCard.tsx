@@ -2,9 +2,11 @@
 
 import { format, isToday, isTomorrow, isThisWeek } from "date-fns";
 import { es } from "date-fns/locale";
+import { enUS } from "date-fns/locale";
 import { MapPin, Clock } from "lucide-react";
 import type { CalendarEvent } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   event: CalendarEvent;
@@ -25,18 +27,20 @@ function gradientFor(id: string) {
   return GRADIENTS[idx];
 }
 
-function dateLabel(d: Date) {
-  if (isToday(d)) return "Hoy";
-  if (isTomorrow(d)) return "Mañana";
-  if (isThisWeek(d, { weekStartsOn: 1 }))
-    return format(d, "EEEE", { locale: es });
-  return format(d, "EEE d MMM", { locale: es });
-}
-
 export function EventCard({ event, onClick }: Props) {
+  const { t, lang } = useT();
+  const locale = lang === "es" ? es : enUS;
   const start = new Date(event.start_at);
   const time = format(start, "HH:mm");
   const gradient = gradientFor(event.id);
+
+  function dateLabel(d: Date) {
+    if (isToday(d)) return t.card.today;
+    if (isTomorrow(d)) return t.card.tomorrow;
+    if (isThisWeek(d, { weekStartsOn: 1 }))
+      return format(d, "EEEE", { locale });
+    return format(d, lang === "es" ? "EEE d MMM" : "EEE MMM d", { locale });
+  }
 
   return (
     <button
@@ -52,12 +56,7 @@ export function EventCard({ event, onClick }: Props) {
             className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
-          <div
-            className={cn(
-              "absolute inset-0 bg-gradient-to-br",
-              gradient
-            )}
-          />
+          <div className={cn("absolute inset-0 bg-gradient-to-br", gradient)} />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
         <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white/90 dark:bg-zinc-900/80 backdrop-blur-md text-[11px] font-semibold capitalize">

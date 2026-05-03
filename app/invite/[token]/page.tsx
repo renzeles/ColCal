@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Calendar, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 
 type InviteInfo = {
   inviter_id: string | null;
@@ -13,13 +14,6 @@ type InviteInfo = {
   reason: string | null;
 };
 
-const REASONS: Record<string, string> = {
-  not_found: "El link no existe o fue eliminado.",
-  used: "Esta invitación ya fue usada.",
-  expired: "Esta invitación venció.",
-  self: "No podés aceptar tu propio link.",
-};
-
 export default function InvitePage({
   params,
 }: {
@@ -27,6 +21,8 @@ export default function InvitePage({
 }) {
   const { token } = use(params);
   const router = useRouter();
+  const { t } = useT();
+  const ip = t.invite_page;
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [authed, setAuthed] = useState(false);
@@ -76,11 +72,14 @@ export default function InvitePage({
     }
     const row = (data as { ok: boolean; reason: string | null }[])?.[0];
     if (!row?.ok) {
-      setError(REASONS[row?.reason ?? ""] ?? "No se pudo aceptar la invitación.");
+      const reasons = ip.reasons as Record<string, string>;
+      setError(reasons[row?.reason ?? ""] ?? ip.failed);
       return;
     }
     router.push("/");
   }
+
+  const inviterName = info?.inviter_name ?? ip.someone;
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-blue-950">
@@ -90,7 +89,7 @@ export default function InvitePage({
       <div className="relative w-full max-w-sm mx-4">
         <div className="rounded-3xl bg-white/70 dark:bg-zinc-900/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-2xl shadow-blue-900/5 p-8 text-center">
           {!info && !error && (
-            <p className="text-sm text-zinc-400 py-8">Cargando invitación…</p>
+            <p className="text-sm text-zinc-400 py-8">{ip.loading}</p>
           )}
 
           {info && info.valid && (
@@ -108,14 +107,14 @@ export default function InvitePage({
                 )}
               </div>
               <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">
-                {info.inviter_name ?? "Alguien"} te invita a Colcal
+                {ip.invited_by(inviterName)}
               </h1>
               <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                Aceptá para empezar a compartir calendarios y eventos.
+                {ip.accept_subtitle}
               </p>
 
               {!authChecked ? (
-                <p className="mt-8 text-xs text-zinc-400">Cargando…</p>
+                <p className="mt-8 text-xs text-zinc-400">{t.loading}</p>
               ) : authed ? (
                 <button
                   onClick={handleAccept}
@@ -123,7 +122,7 @@ export default function InvitePage({
                   className="mt-8 w-full h-11 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60"
                 >
                   <UserPlus className="h-4 w-4" />
-                  {accepting ? "Aceptando…" : "Aceptar invitación"}
+                  {accepting ? ip.accepting : ip.accept_button}
                 </button>
               ) : (
                 <button
@@ -131,7 +130,7 @@ export default function InvitePage({
                   className="mt-8 w-full h-11 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium text-sm flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition"
                 >
                   <Calendar className="h-4 w-4" />
-                  Entrar con Google y aceptar
+                  {ip.login_button}
                 </button>
               )}
             </>
@@ -145,10 +144,10 @@ export default function InvitePage({
                 </div>
               </div>
               <h1 className="text-lg font-semibold tracking-tight">
-                Invitación no válida
+                {ip.invalid_title}
               </h1>
               <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                {REASONS[info.reason ?? ""] ?? "El link no es válido."}
+                {(ip.reasons as Record<string, string>)[info.reason ?? ""] ?? ip.invalid_default}
               </p>
             </>
           )}

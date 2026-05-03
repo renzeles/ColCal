@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { CalendarEvent, CalendarView, SidebarSelection } from "@/lib/types";
 import { GridCalendar } from "./GridCalendar";
 import { EventFeed } from "./EventFeed";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   selection: SidebarSelection;
@@ -14,12 +15,13 @@ type Props = {
   onEventClick?: (e: CalendarEvent) => void;
 };
 
-function selectionLabel(s: SidebarSelection) {
-  if (s.kind === "self") return "Mi calendario";
+function selectionLabel(s: SidebarSelection, myCalendarLabel: string) {
+  if (s.kind === "self") return myCalendarLabel;
   return s.name;
 }
 
 export function CalendarArea({ selection, events, onNewEvent, onEventClick }: Props) {
+  const { t } = useT();
   const [view, setView] = useState<CalendarView>("grid");
 
   return (
@@ -27,10 +29,11 @@ export function CalendarArea({ selection, events, onNewEvent, onEventClick }: Pr
       <header className="px-8 pt-6 pb-4 flex items-center justify-between border-b border-black/5 dark:border-white/5">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">
-            {selectionLabel(selection)}
+            {selectionLabel(selection, t.sidebar.my_calendar)}
           </h1>
           <p className="text-xs text-zinc-500 mt-0.5">
-            {events.length} {events.length === 1 ? "evento" : "eventos"}
+            {events.length}{" "}
+            {events.length === 1 ? t.calendar.events_one : t.calendar.events_other}
           </p>
         </div>
 
@@ -41,7 +44,7 @@ export function CalendarArea({ selection, events, onNewEvent, onEventClick }: Pr
             className="ml-2 h-9 px-4 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium flex items-center gap-1.5 hover:scale-[1.02] active:scale-[0.98] transition"
           >
             <Plus className="h-4 w-4" />
-            Nuevo
+            {t.calendar.new_button}
           </button>
         </div>
       </header>
@@ -66,19 +69,20 @@ function ViewToggle({
   view: CalendarView;
   onChange: (v: CalendarView) => void;
 }) {
+  const { t } = useT();
   return (
     <div className="inline-flex items-center p-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800/60 border border-black/5 dark:border-white/5">
       <ToggleBtn
         active={view === "grid"}
         onClick={() => onChange("grid")}
-        label="Grilla"
+        label={t.calendar.grid_label}
       >
         <LayoutGrid className="h-3.5 w-3.5" />
       </ToggleBtn>
       <ToggleBtn
         active={view === "feed"}
         onClick={() => onChange("feed")}
-        label="Eventos"
+        label={t.calendar.feed_label}
       >
         <List className="h-3.5 w-3.5" />
       </ToggleBtn>

@@ -4,9 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, User, AtSign, Camera } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { t } = useT();
+  const pr = t.profile;
   const [userId, setUserId] = useState<string | null>(null);
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -66,7 +69,7 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center text-sm text-zinc-400">
-        Cargando…
+        {t.loading}
       </div>
     );
   }
@@ -79,13 +82,13 @@ export default function ProfilePage() {
           className="mb-6 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition"
         >
           <ArrowLeft className="h-4 w-4" />
-          Volver al calendario
+          {pr.back}
         </button>
 
         <div className="rounded-3xl bg-white/70 dark:bg-zinc-900/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-2xl shadow-blue-900/5 overflow-hidden">
           <div className="px-8 py-6 border-b border-black/5 dark:border-white/5">
-            <h1 className="text-xl font-semibold tracking-tight">Editar perfil</h1>
-            <p className="text-sm text-zinc-500 mt-0.5">Actualizá tu información personal</p>
+            <h1 className="text-xl font-semibold tracking-tight">{pr.title}</h1>
+            <p className="text-sm text-zinc-500 mt-0.5">{pr.subtitle}</p>
           </div>
 
           <div className="px-8 py-6 space-y-5">
@@ -104,7 +107,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            <Field icon={<Camera className="h-4 w-4" />} label="URL de foto">
+            <Field icon={<Camera className="h-4 w-4" />} label={pr.avatar_label}>
               <input
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
@@ -113,20 +116,20 @@ export default function ProfilePage() {
               />
             </Field>
 
-            <Field icon={<User className="h-4 w-4" />} label="Nombre completo">
+            <Field icon={<User className="h-4 w-4" />} label={pr.name_label}>
               <input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Tu nombre"
+                placeholder={pr.name_label}
                 className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
               />
             </Field>
 
-            <Field icon={<AtSign className="h-4 w-4" />} label="Nombre de usuario">
+            <Field icon={<AtSign className="h-4 w-4" />} label={pr.username_label}>
               <input
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="usuario"
+                placeholder={pr.username_label}
                 className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
               />
             </Field>
@@ -146,7 +149,7 @@ export default function ProfilePage() {
                   : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900"
               }`}
             >
-              {saving ? "Guardando…" : saved ? "¡Guardado!" : "Guardar cambios"}
+              {saving ? pr.saving : saved ? pr.saved : pr.save}
             </button>
           </div>
         </div>

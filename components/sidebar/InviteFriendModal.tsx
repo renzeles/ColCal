@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Copy, Check, Link2, MessageCircle, Mail, Share2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -10,6 +11,8 @@ type Props = {
 };
 
 export function InviteFriendModal({ open, onClose }: Props) {
+  const { t } = useT();
+  const im = t.invite_modal;
   const [link, setLink] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -30,7 +33,7 @@ export function InviteFriendModal({ open, onClose }: Props) {
     const supabase = createClient();
     const { data: auth } = await supabase.auth.getUser();
     if (!auth.user) {
-      setError("No estás autenticado");
+      setError(im.not_authed);
       setGenerating(false);
       return;
     }
@@ -56,25 +59,19 @@ export function InviteFriendModal({ open, onClose }: Props) {
 
   function shareNative() {
     if (!link) return;
-    navigator.share?.({
-      title: "Te invito a Colcal",
-      text: "Mirá mi calendario compartido en Colcal",
-      url: link,
-    });
+    navigator.share?.({ title: im.share_title, text: im.share_desc, url: link });
   }
 
   function shareWhatsApp() {
     if (!link) return;
-    const text = encodeURIComponent(`Te invito a Colcal: ${link}`);
+    const text = encodeURIComponent(`${im.share_text}${link}`);
     window.open(`https://wa.me/?text=${text}`, "_blank");
   }
 
   function shareEmail() {
     if (!link) return;
-    const subject = encodeURIComponent("Te invito a Colcal");
-    const body = encodeURIComponent(
-      `Hola! Te invito a ver mi calendario en Colcal.\n\nAceptá acá: ${link}\n\nEl link vence en 14 días.`
-    );
+    const subject = encodeURIComponent(im.email_subject);
+    const body = encodeURIComponent(im.email_body(link));
     window.open(`mailto:?subject=${subject}&body=${body}`);
   }
 
@@ -92,7 +89,7 @@ export function InviteFriendModal({ open, onClose }: Props) {
         onClick={(e) => e.stopPropagation()}
       >
         <header className="px-6 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
-          <h2 className="text-base font-semibold tracking-tight">Invitar amigo</h2>
+          <h2 className="text-base font-semibold tracking-tight">{im.title}</h2>
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5"
@@ -109,17 +106,16 @@ export function InviteFriendModal({ open, onClose }: Props) {
                   <Link2 className="h-6 w-6 text-white" />
                 </div>
                 <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                  Generá un link único para tu amigo. Cuando lo abra e inicie sesión
-                  con Google, queda agregado automáticamente.
+                  {im.description}
                 </p>
-                <p className="text-xs text-zinc-400 mt-1.5">Vence a los 14 días.</p>
+                <p className="text-xs text-zinc-400 mt-1.5">{im.expires}</p>
               </div>
               <button
                 onClick={generate}
                 disabled={generating}
                 className="w-full h-11 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium text-sm hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60"
               >
-                {generating ? "Generando…" : "Generar link"}
+                {generating ? im.generating : im.generate}
               </button>
             </>
           ) : (
@@ -144,12 +140,12 @@ export function InviteFriendModal({ open, onClose }: Props) {
                 {copied ? (
                   <>
                     <Check className="h-4 w-4" />
-                    ¡Link copiado!
+                    {im.copied}
                   </>
                 ) : (
                   <>
                     <Copy className="h-4 w-4" />
-                    Copiar link
+                    {im.copy}
                   </>
                 )}
               </button>
@@ -158,20 +154,20 @@ export function InviteFriendModal({ open, onClose }: Props) {
                 <ShareBtn
                   onClick={shareWhatsApp}
                   icon={<MessageCircle className="h-4 w-4" />}
-                  label="WhatsApp"
+                  label={im.whatsapp}
                   className="bg-[#25D366] text-white hover:bg-[#20b958]"
                 />
                 <ShareBtn
                   onClick={shareEmail}
                   icon={<Mail className="h-4 w-4" />}
-                  label="Email"
+                  label={im.email}
                   className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 />
                 {canNativeShare && (
                   <ShareBtn
                     onClick={shareNative}
                     icon={<Share2 className="h-4 w-4" />}
-                    label="Más"
+                    label={im.more}
                     className="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                   />
                 )}

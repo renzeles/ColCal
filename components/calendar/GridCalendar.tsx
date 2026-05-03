@@ -6,6 +6,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import multiMonthPlugin from "@fullcalendar/multimonth";
 import type { CalendarEvent } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   events: CalendarEvent[];
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function GridCalendar({ events, onEventClick }: Props) {
+  const { t } = useT();
   return (
     <div className="h-full">
       <FullCalendar
@@ -25,13 +27,13 @@ export function GridCalendar({ events, onEventClick }: Props) {
         }}
         height="100%"
         firstDay={1}
-        locale="es"
+        locale={t.fc.locale}
         buttonText={{
-          today: "Hoy",
-          month: "Mes",
-          week: "Semana",
-          day: "Día",
-          year: "Año",
+          today: t.fc.today,
+          month: t.fc.month,
+          week: t.fc.week,
+          day: t.fc.day,
+          year: t.fc.year,
         }}
         multiMonthMaxColumns={3}
         events={events.map((e) => ({

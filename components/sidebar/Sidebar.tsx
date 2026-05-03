@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
 import type { SidebarSelection } from "@/lib/types";
 import { InviteFriendModal } from "./InviteFriendModal";
+import { useT } from "@/lib/i18n";
+import { LangToggle } from "./LangToggle";
 
 export type Friend = {
   id: string;
@@ -39,6 +41,7 @@ export function Sidebar({
   userEmail,
   friends,
 }: Props) {
+  const { t } = useT();
   const [inviteOpen, setInviteOpen] = useState(false);
 
   return (
@@ -63,37 +66,40 @@ export function Sidebar({
           </p>
         </div>
         <div className="flex items-center gap-1">
+          <LangToggle />
           <a
             href="/profile"
-            title="Editar perfil"
+            title={t.sidebar.edit_profile_title}
             className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5"
           >
             <Settings className="h-4 w-4" />
           </a>
-          <SignOutButton />
+          <SignOutButton title={t.sidebar.sign_out_title} />
         </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto px-2 scrollbar-hidden">
         <SelfRow
+          label={t.sidebar.my_calendar}
           active={selection.kind === "self"}
           onClick={() => onSelect({ kind: "self" })}
         />
 
-        <Section title="Amigos" icon={<Users className="h-3.5 w-3.5" />}>
+        <Section title={t.sidebar.friends} icon={<Users className="h-3.5 w-3.5" />}>
           {friends.length === 0 ? (
-            <EmptyHint text="Todavía no agregaste amigos" />
+            <EmptyHint text={t.sidebar.no_friends} />
           ) : (
             friends.map((f) => (
               <FriendRow
                 key={f.id}
                 friend={f}
+                fallbackLabel={t.sidebar.friend}
                 active={selection.kind === "friend" && selection.id === f.id}
                 onClick={() =>
                   onSelect({
                     kind: "friend",
                     id: f.id,
-                    name: f.full_name ?? "Amigo",
+                    name: f.full_name ?? t.sidebar.friend,
                     avatar: f.avatar_url,
                   })
                 }
@@ -101,19 +107,19 @@ export function Sidebar({
             ))
           )}
           <AddButton
-            label="Invitar amigo"
+            label={t.sidebar.invite_friend}
             onClick={() => setInviteOpen(true)}
           />
         </Section>
 
-        <Section title="Grupos" icon={<UserCircle className="h-3.5 w-3.5" />}>
-          <EmptyHint text="Sin grupos" />
-          <AddButton label="Crear grupo" />
+        <Section title={t.sidebar.groups} icon={<UserCircle className="h-3.5 w-3.5" />}>
+          <EmptyHint text={t.sidebar.no_groups} />
+          <AddButton label={t.sidebar.create_group} />
         </Section>
 
-        <Section title="Lugares" icon={<MapPin className="h-3.5 w-3.5" />}>
-          <EmptyHint text="Sin lugares" />
-          <AddButton label="Agregar lugar" />
+        <Section title={t.sidebar.places} icon={<MapPin className="h-3.5 w-3.5" />}>
+          <EmptyHint text={t.sidebar.no_places} />
+          <AddButton label={t.sidebar.add_place} />
         </Section>
       </nav>
 
@@ -126,9 +132,11 @@ export function Sidebar({
 }
 
 function SelfRow({
+  label,
   active,
   onClick,
 }: {
+  label: string;
   active: boolean;
   onClick: () => void;
 }) {
@@ -143,17 +151,19 @@ function SelfRow({
       )}
     >
       <CalendarIcon className="h-4 w-4 text-blue-500" />
-      Mi calendario
+      {label}
     </button>
   );
 }
 
 function FriendRow({
   friend,
+  fallbackLabel,
   active,
   onClick,
 }: {
   friend: Friend;
+  fallbackLabel: string;
   active: boolean;
   onClick: () => void;
 }) {
@@ -177,7 +187,7 @@ function FriendRow({
       ) : (
         <span className="h-5 w-5 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500" />
       )}
-      <span className="truncate">{friend.full_name ?? "Amigo"}</span>
+      <span className="truncate">{friend.full_name ?? fallbackLabel}</span>
     </button>
   );
 }
@@ -238,7 +248,7 @@ function AddButton({
   );
 }
 
-function SignOutButton() {
+function SignOutButton({ title }: { title: string }) {
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -247,7 +257,7 @@ function SignOutButton() {
   return (
     <button
       onClick={signOut}
-      title="Cerrar sesión"
+      title={title}
       className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/5"
     >
       <LogOut className="h-4 w-4" />

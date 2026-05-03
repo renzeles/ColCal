@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Calendar } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export default function LoginPage() {
+  const { t, lang, setLang } = useT();
   const [loading, setLoading] = useState(false);
 
   async function signInWithGoogle() {
@@ -23,6 +25,13 @@ export default function LoginPage() {
       <div className="absolute -top-40 -left-40 h-96 w-96 rounded-full bg-blue-200/40 blur-3xl dark:bg-blue-500/10" />
       <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-pink-200/40 blur-3xl dark:bg-pink-500/10" />
 
+      <button
+        onClick={() => setLang(lang === "es" ? "en" : "es")}
+        className="absolute top-4 right-4 px-3 py-1.5 rounded-full text-xs font-semibold text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 bg-white/60 dark:bg-zinc-800/60 border border-black/5 dark:border-white/10 backdrop-blur-sm transition"
+      >
+        {lang === "es" ? "EN" : "ES"}
+      </button>
+
       <div className="relative w-full max-w-sm mx-4">
         <div className="rounded-3xl bg-white/70 dark:bg-zinc-900/60 backdrop-blur-xl border border-white/60 dark:border-white/5 shadow-2xl shadow-blue-900/5 p-10">
           <div className="flex justify-center mb-6">
@@ -32,10 +41,10 @@ export default function LoginPage() {
           </div>
 
           <h1 className="text-2xl font-semibold text-center text-zinc-900 dark:text-white tracking-tight">
-            Bienvenido a Colcal
+            {t.login.title}
           </h1>
           <p className="mt-2 text-sm text-center text-zinc-500 dark:text-zinc-400">
-            Tu calendario, compartido con quien quieras.
+            {t.login.subtitle}
           </p>
 
           <button
@@ -44,11 +53,11 @@ export default function LoginPage() {
             className="mt-8 w-full h-11 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-medium text-sm flex items-center justify-center gap-2.5 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
           >
             <GoogleIcon />
-            {loading ? "Conectando…" : "Continuar con Google"}
+            {loading ? t.login.connecting : t.login.button}
           </button>
 
           <p className="mt-6 text-xs text-center text-zinc-400 dark:text-zinc-500">
-            Al continuar aceptás nuestros términos y política de privacidad.
+            {t.login.terms}
           </p>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X, Calendar, Clock, MapPin, FileText, Image as ImageIcon, Trash2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { CalendarEvent } from "@/lib/types";
+import { useT } from "@/lib/i18n";
 
 type Props = {
   open: boolean;
@@ -36,6 +37,8 @@ export function EventModal({
   userId,
   event,
 }: Props) {
+  const { t } = useT();
+  const em = t.event_modal;
   const isEdit = !!event;
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -71,7 +74,7 @@ export function EventModal({
 
   async function handleSave() {
     if (!title.trim()) {
-      setError("El título es obligatorio");
+      setError(em.error_title_required);
       return;
     }
     setSaving(true);
@@ -133,7 +136,7 @@ export function EventModal({
       >
         <header className="px-6 py-4 flex items-center justify-between border-b border-black/5 dark:border-white/10">
           <h2 className="text-base font-semibold tracking-tight">
-            {isEdit ? "Editar evento" : "Nuevo evento"}
+            {isEdit ? em.edit_title : em.new_title}
           </h2>
           <button
             onClick={onClose}
@@ -148,7 +151,7 @@ export function EventModal({
             autoFocus
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Título del evento"
+            placeholder={em.title_placeholder}
             className="w-full text-lg font-semibold bg-transparent border-0 outline-none placeholder:text-zinc-300 dark:placeholder:text-zinc-600"
           />
 
@@ -156,14 +159,14 @@ export function EventModal({
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descripción (opcional)"
+              placeholder={em.desc_placeholder}
               rows={3}
               className="w-full bg-transparent border-0 outline-none text-sm resize-none placeholder:text-zinc-400"
             />
           </Field>
 
           <div className="grid grid-cols-2 gap-3">
-            <Field icon={<Calendar className="h-4 w-4" />} label="Inicio">
+            <Field icon={<Calendar className="h-4 w-4" />} label={em.start_label}>
               <input
                 type="datetime-local"
                 value={startAt}
@@ -171,7 +174,7 @@ export function EventModal({
                 className="w-full bg-transparent border-0 outline-none text-sm"
               />
             </Field>
-            <Field icon={<Clock className="h-4 w-4" />} label="Fin">
+            <Field icon={<Clock className="h-4 w-4" />} label={em.end_label}>
               <input
                 type="datetime-local"
                 value={endAt}
@@ -185,7 +188,7 @@ export function EventModal({
             <input
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ubicación (opcional)"
+              placeholder={em.location_placeholder}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
             />
           </Field>
@@ -194,7 +197,7 @@ export function EventModal({
             <input
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="URL de imagen (opcional)"
+              placeholder={em.image_placeholder}
               className="w-full bg-transparent border-0 outline-none text-sm placeholder:text-zinc-400"
             />
           </Field>
@@ -210,26 +213,26 @@ export function EventModal({
           {isEdit ? (
             confirmDelete ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-500">¿Eliminar?</span>
+                <span className="text-xs text-zinc-500">{em.confirm_delete}</span>
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
                   className="h-8 px-3 rounded-full bg-red-500 text-white text-xs font-medium hover:bg-red-600 transition disabled:opacity-60"
                 >
-                  {deleting ? "Eliminando…" : "Sí, eliminar"}
+                  {deleting ? em.deleting : em.yes_delete}
                 </button>
                 <button
                   onClick={() => setConfirmDelete(false)}
                   className="h-8 px-3 rounded-full text-xs text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5"
                 >
-                  Cancelar
+                  {em.cancel}
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setConfirmDelete(true)}
                 className="p-1.5 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition"
-                title="Eliminar evento"
+                title={em.delete_title}
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -243,14 +246,14 @@ export function EventModal({
               onClick={onClose}
               className="h-9 px-4 rounded-full text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:bg-black/5 dark:hover:bg-white/5"
             >
-              Cancelar
+              {em.cancel}
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
               className="h-9 px-5 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-sm font-medium hover:scale-[1.02] active:scale-[0.98] transition disabled:opacity-60"
             >
-              {saving ? "Guardando…" : isEdit ? "Guardar cambios" : "Crear evento"}
+              {saving ? em.saving : isEdit ? em.save : em.create}
             </button>
           </div>
         </footer>
