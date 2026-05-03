@@ -3,7 +3,7 @@ export type Lang = "es" | "en";
 const es = {
   loading: "Cargando…",
   sidebar: {
-    my_calendar: "Mi calendario",
+    my_calendar: "Tu calendario",
     friends: "Amigos",
     groups: "Grupos",
     places: "Lugares",
@@ -171,13 +171,15 @@ const es = {
       self: "Ya sos miembro de este grupo.",
     },
     as_role: (role: string) => `Como ${role}`,
+    members_count: (n: number) => `${n} ${n === 1 ? "miembro" : "miembros"}`,
+    no_events: "Sin eventos en el grupo todavía",
   },
 };
 
 const en: typeof es = {
   loading: "Loading…",
   sidebar: {
-    my_calendar: "My calendar",
+    my_calendar: "Your calendar",
     friends: "Friends",
     groups: "Groups",
     places: "Places",
@@ -345,6 +347,8 @@ const en: typeof es = {
       self: "You're already a member of this group.",
     },
     as_role: (role: string) => `As ${role}`,
+    members_count: (n: number) => `${n} ${n === 1 ? "member" : "members"}`,
+    no_events: "No events in this group yet",
   },
 };
 

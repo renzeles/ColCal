@@ -19,6 +19,7 @@ body {
   --fc-event-bg-color: #007aff;
   --fc-event-border-color: #007aff;
   --fc-page-bg-color: transparent;
+  --fc-neutral-bg-color: transparent;
   font-size: 13px;
 }
 
@@ -84,13 +85,21 @@ body {
   color: #007aff !important;
 }
 
-/* Days outside current month — match container background */
-.fc .fc-day-other {
+/* Days outside current month — match container background (dayGrid + multimonth) */
+.fc .fc-day-other,
+.fc-multimonth .fc-day-other,
+.fc-multimonth-daygrid .fc-day-other {
   background-color: transparent !important;
 }
 
-.fc .fc-day-other .fc-daygrid-day-number {
-  opacity: 0.25;
+.fc .fc-day-other .fc-daygrid-day-number,
+.fc-multimonth .fc-day-other .fc-daygrid-day-number {
+  opacity: 0.2;
+}
+
+/* Multimonth year view: padding rows at start/end of mini-months */
+.fc-multimonth-daygrid-table td.fc-day-other {
+  background: transparent !important;
 }
 
 /* Custom dark-blue scrollbar (site-wide) */

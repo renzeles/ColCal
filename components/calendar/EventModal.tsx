@@ -15,6 +15,7 @@ type Props = {
   onDeleted?: (id: string) => void;
   userId: string;
   event?: CalendarEvent | null;
+  groupId?: string | null;
 };
 
 function defaultDateTime(offsetHours = 1) {
@@ -37,6 +38,7 @@ export function EventModal({
   onDeleted,
   userId,
   event,
+  groupId,
 }: Props) {
   const { t } = useT();
   const em = t.event_modal;
@@ -104,6 +106,20 @@ export function EventModal({
       setSaving(false);
       if (error) { setError(error.message); return; }
       onUpdated?.(data as CalendarEvent);
+    } else if (groupId) {
+      const { data, error } = await supabase.rpc("create_group_event", {
+        _group_id: groupId,
+        _title: payload.title,
+        _description: payload.description,
+        _image_url: payload.image_url,
+        _start_at: payload.start_at,
+        _end_at: payload.end_at,
+        _location: payload.location,
+        _is_public: payload.is_public,
+      });
+      setSaving(false);
+      if (error) { setError(error.message); return; }
+      onCreated((data as CalendarEvent[])[0]);
     } else {
       const { data, error } = await supabase
         .from("events")

@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
-import type { SidebarSelection } from "@/lib/types";
+import type { GroupItem, SidebarSelection } from "@/lib/types";
 import { InviteFriendModal } from "./InviteFriendModal";
 import { CreateGroupModal } from "./CreateGroupModal";
 import { useT } from "@/lib/i18n";
@@ -32,6 +32,7 @@ type Props = {
   userAvatar?: string | null;
   userEmail?: string | null;
   friends: Friend[];
+  groups: GroupItem[];
 };
 
 export function Sidebar({
@@ -41,6 +42,7 @@ export function Sidebar({
   userAvatar,
   userEmail,
   friends,
+  groups,
 }: Props) {
   const { t } = useT();
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -115,7 +117,18 @@ export function Sidebar({
         </Section>
 
         <Section title={t.sidebar.groups} icon={<UserCircle className="h-3.5 w-3.5" />}>
-          <EmptyHint text={t.sidebar.no_groups} />
+          {groups.length === 0 ? (
+            <EmptyHint text={t.sidebar.no_groups} />
+          ) : (
+            groups.map((g) => (
+              <GroupRow
+                key={g.id}
+                group={g}
+                active={selection.kind === "group" && selection.id === g.id}
+                onClick={() => onSelect({ kind: "group", id: g.id, name: g.name, avatar: g.avatar_url })}
+              />
+            ))
+          )}
           <AddButton label={t.sidebar.create_group} onClick={() => setGroupOpen(true)} />
         </Section>
 
@@ -194,6 +207,39 @@ function FriendRow({
         <span className="h-5 w-5 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500" />
       )}
       <span className="truncate">{friend.full_name ?? fallbackLabel}</span>
+    </button>
+  );
+}
+
+function GroupRow({
+  group,
+  active,
+  onClick,
+}: {
+  group: GroupItem;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-sm transition-colors",
+        active
+          ? "bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white font-medium"
+          : "text-zinc-600 dark:text-zinc-400 hover:bg-black/5 dark:hover:bg-white/5"
+      )}
+    >
+      {group.avatar_url ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={group.avatar_url} alt="" className="h-5 w-5 rounded-full object-cover" />
+      ) : (
+        <span className="h-5 w-5 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-[9px] font-bold">
+          {group.name.charAt(0).toUpperCase()}
+        </span>
+      )}
+      <span className="truncate flex-1">{group.name}</span>
+      <span className="text-[10px] text-zinc-400 shrink-0">{group.member_count}</span>
     </button>
   );
 }

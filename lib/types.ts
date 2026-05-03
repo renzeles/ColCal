@@ -16,8 +16,25 @@ export type CalendarEvent = {
   end_at: string | null;
   location: string | null;
   is_public: boolean;
+  group_id?: string | null;
   created_at: string;
   creator?: Profile;
+};
+
+export type GroupItem = {
+  id: string;
+  name: string;
+  description: string | null;
+  avatar_url: string | null;
+  member_count: number;
+  my_role: string;
+};
+
+export type GroupMember = {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+  role: string;
 };
 
 export type Group = {

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { LayoutGrid, List, Plus, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AppNotification, CalendarEvent, CalendarView, PermissionStatus, SidebarSelection } from "@/lib/types";
+import type { AppNotification, CalendarEvent, CalendarView, GroupMember, PermissionStatus, SidebarSelection } from "@/lib/types";
 import { GridCalendar } from "./GridCalendar";
 import { EventFeed } from "./EventFeed";
 import { useT } from "@/lib/i18n";
@@ -20,6 +20,7 @@ type Props = {
   friendPermission?: PermissionStatus;
   onRequestAccess?: () => void;
   requestingAccess?: boolean;
+  groupMembers?: GroupMember[];
 };
 
 export function CalendarArea({
@@ -33,10 +34,12 @@ export function CalendarArea({
   friendPermission,
   onRequestAccess,
   requestingAccess,
+  groupMembers,
 }: Props) {
   const { t } = useT();
   const [view, setView] = useState<CalendarView>("grid");
   const isFriend = selection.kind === "friend";
+  const isGroup = selection.kind === "group";
 
   const title = selection.kind === "self"
     ? t.sidebar.my_calendar
@@ -80,6 +83,7 @@ export function CalendarArea({
               {t.calendar.new_button}
             </button>
           )}
+
         </div>
       </header>
 
@@ -91,6 +95,10 @@ export function CalendarArea({
         />
       )}
 
+      {isGroup && groupMembers && groupMembers.length > 0 && (
+        <GroupMembersStrip members={groupMembers} />
+      )}
+
       <div className="flex-1 overflow-hidden p-6">
         {view === "grid" ? (
           <div className="h-full bg-white dark:bg-zinc-900/40 rounded-2xl border border-black/5 dark:border-white/5 p-4 shadow-sm">
@@ -100,6 +108,37 @@ export function CalendarArea({
           <EventFeed events={events} onEventClick={isFriend ? undefined : onEventClick} />
         )}
       </div>
+    </div>
+  );
+}
+
+function GroupMembersStrip({ members }: { members: GroupMember[] }) {
+  const { t } = useT();
+  return (
+    <div className="mx-8 mt-3 px-4 py-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-black/5 dark:border-white/5 flex items-center gap-3">
+      <div className="flex items-center -space-x-2">
+        {members.slice(0, 8).map((m) => (
+          <div key={m.id} title={`${m.full_name ?? "?"} (${m.role})`} className="ring-2 ring-white dark:ring-zinc-900 rounded-full">
+            {m.avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={m.avatar_url} alt="" className="h-6 w-6 rounded-full object-cover" />
+            ) : (
+              <div className={cn(
+                "h-6 w-6 rounded-full flex items-center justify-center text-white text-[9px] font-bold",
+                m.role === "admin" ? "bg-gradient-to-br from-violet-500 to-purple-600" : "bg-gradient-to-br from-zinc-400 to-zinc-500"
+              )}>
+                {(m.full_name ?? "?").charAt(0).toUpperCase()}
+              </div>
+            )}
+          </div>
+        ))}
+        {members.length > 8 && (
+          <div className="h-6 w-6 rounded-full bg-zinc-200 dark:bg-zinc-700 ring-2 ring-white dark:ring-zinc-900 flex items-center justify-center text-[9px] font-bold text-zinc-500">
+            +{members.length - 8}
+          </div>
+        )}
+      </div>
+      <span className="text-xs text-zinc-500">{t.group.members_count(members.length)}</span>
     </div>
   );
 }
