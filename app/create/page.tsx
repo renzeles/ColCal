@@ -7,10 +7,11 @@ import { createGCalEvent, updateGCalEvent, deleteGCalEvent } from "@/lib/google-
 import { createMSEvent, updateMSEvent, deleteMSEvent } from "@/lib/microsoft-calendar";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
+import { Avatar } from "@/components/Avatar";
 import { SearchBar } from "@/components/SearchBar";
 import { Toast, useToast } from "@/components/Toast";
 import { EVENT_COLORS, EVENT_COLOR_LABEL, getEventColorStyles } from "@/lib/event-colors";
-import type { CalendarProvider, EventColor, EventVisibility, SentEvent } from "@/lib/types";
+import type { CalendarProvider, EventColor, EventVisibility, SentEvent, Profile } from "@/lib/types";
 
 const PROVIDER_LABEL: Record<CalendarProvider, string> = {
   google: "Google Calendar",
@@ -21,6 +22,8 @@ const PROVIDER_SCOPES: Record<CalendarProvider, string> = {
   google: "https://www.googleapis.com/auth/calendar.events",
   microsoft: "Calendars.ReadWrite offline_access",
 };
+
+type Attendee = { email: string; profile?: Profile };
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
@@ -46,12 +49,17 @@ export default function CreatePage() {
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
+  // Following profiles for attendee autocomplete
+  const [followingProfiles, setFollowingProfiles] = useState<Profile[]>([]);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState("");
   const [visibility, setVisibility] = useState<EventVisibility>("private");
   const [startAt, setStartAt] = useState("");
   const [endAt, setEndAt] = useState("");
-  const [emails, setEmails] = useState("");
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [contactInput, setContactInput] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -63,18 +71,28 @@ export default function CreatePage() {
 
   const formRef = useRef<HTMLFormElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const suggestionRef = useRef<HTMLDivElement>(null);
+  const contactInputRef = useRef<HTMLInputElement>(null);
 
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   useEffect(() => {
-    if (!imageFile) {
-      setFilePreviewUrl(null);
-      return;
-    }
+    if (!imageFile) { setFilePreviewUrl(null); return; }
     const url = URL.createObjectURL(imageFile);
     setFilePreviewUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [imageFile]);
   const imagePreview = filePreviewUrl ?? imageUrl;
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (suggestionRef.current && !suggestionRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -86,12 +104,30 @@ export default function CreatePage() {
         : false;
       setCalendarConnected(Boolean(session?.provider_token) && flag);
 
-      const { data: rows } = await supabase
-        .from("sent_events")
-        .select("*")
-        .eq("creator_id", user.id)
-        .order("created_at", { ascending: false });
-      setEvents((rows ?? []) as SentEvent[]);
+      // Load events + following profiles in parallel
+      const [eventsRes, followingRes] = await Promise.all([
+        supabase
+          .from("sent_events")
+          .select("*")
+          .eq("creator_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("follows")
+          .select("following_id")
+          .eq("follower_id", user.id),
+      ]);
+
+      setEvents((eventsRes.data ?? []) as SentEvent[]);
+
+      const followedIds = (followingRes.data ?? []).map((r) => r.following_id);
+      if (followedIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", followedIds);
+        setFollowingProfiles((profiles ?? []) as Profile[]);
+      }
+
       setEventsLoading(false);
 
       if (user.provider && new URLSearchParams(window.location.search).get("connected") === "1") {
@@ -127,7 +163,8 @@ export default function CreatePage() {
     setVisibility("private");
     setStartAt("");
     setEndAt("");
-    setEmails("");
+    setAttendees([]);
+    setContactInput("");
     setLocation("");
     setDescription("");
     setImageFile(null);
@@ -142,7 +179,12 @@ export default function CreatePage() {
     setVisibility(ev.visibility);
     setStartAt(toLocalInput(ev.start_at));
     setEndAt(toLocalInput(ev.end_at));
-    setEmails(ev.attendee_emails.join(", "));
+    // Match emails back to profiles where possible
+    const byEmail = new Map(
+      followingProfiles.filter((p) => p.email).map((p) => [p.email!, p])
+    );
+    setAttendees(ev.attendee_emails.map((email) => ({ email, profile: byEmail.get(email) })));
+    setContactInput("");
     setLocation(ev.location ?? "");
     setDescription(ev.description ?? "");
     setImageFile(null);
@@ -150,6 +192,59 @@ export default function CreatePage() {
     setColor(ev.color ?? "zinc");
     if (imageInputRef.current) imageInputRef.current.value = "";
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Attendee helpers
+  const alreadyAdded = new Set(attendees.map((a) => a.email));
+
+  const suggestions = contactInput.trim()
+    ? followingProfiles.filter((p) => {
+        if (!p.email || alreadyAdded.has(p.email)) return false;
+        const q = contactInput.trim().toLowerCase();
+        return (
+          (p.full_name ?? "").toLowerCase().includes(q) ||
+          (p.username ?? "").toLowerCase().includes(q) ||
+          (p.email ?? "").toLowerCase().includes(q)
+        );
+      })
+    : [];
+
+  function addAttendeeByEmail(email: string) {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized || alreadyAdded.has(normalized)) return;
+    const profile = followingProfiles.find((p) => p.email?.toLowerCase() === normalized);
+    setAttendees((prev) => [...prev, { email: normalized, profile }]);
+    setContactInput("");
+    setShowSuggestions(false);
+  }
+
+  function selectContact(p: Profile) {
+    if (!p.email) return;
+    setAttendees((prev) => [...prev, { email: p.email!, profile: p }]);
+    setContactInput("");
+    setShowSuggestions(false);
+    contactInputRef.current?.focus();
+  }
+
+  function removeAttendee(email: string) {
+    setAttendees((prev) => prev.filter((a) => a.email !== email));
+  }
+
+  function handleContactKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === "," || e.key === ";") {
+      e.preventDefault();
+      const val = contactInput.trim();
+      // If there's exactly one suggestion and it matches well, select it
+      if (suggestions.length === 1 && !val.includes("@")) {
+        selectContact(suggestions[0]);
+      } else if (val.includes("@")) {
+        addAttendeeByEmail(val);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    } else if (e.key === "Backspace" && contactInput === "" && attendees.length > 0) {
+      removeAttendee(attendees[attendees.length - 1].email);
+    }
   }
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -210,20 +305,22 @@ export default function CreatePage() {
     setSubmitting(true);
 
     try {
-      const attendeeEmails = emails
-        .split(/[\s,;]+/)
-        .map((e) => e.trim())
-        .filter((e) => e.length > 0);
+      // Flush any raw email still in the input
+      const pendingEmail = contactInput.trim();
+      const allAttendees = [...attendees];
+      if (pendingEmail.includes("@") && !alreadyAdded.has(pendingEmail.toLowerCase())) {
+        allAttendees.push({ email: pendingEmail.toLowerCase() });
+        setAttendees(allAttendees);
+        setContactInput("");
+      }
 
+      const attendeeEmails = allAttendees.map((a) => a.email);
       const start = new Date(startAt);
       const end = new Date(endAt);
       const supabase = createClient();
 
-      // Resolve final image URL: upload new file, keep existing, or null
       let finalImageUrl: string | null = imageUrl;
-      if (imageFile) {
-        finalImageUrl = await uploadImage(imageFile);
-      }
+      if (imageFile) finalImageUrl = await uploadImage(imageFile);
 
       const eventArgs = {
         title,
@@ -235,7 +332,6 @@ export default function CreatePage() {
         imageUrl: finalImageUrl ?? undefined,
       };
 
-      // Only push to provider calendar if user has OAuth + there are attendees
       const needsProviderCall = user.provider !== null && attendeeEmails.length > 0;
       let token: string | null = null;
       if (needsProviderCall) {
@@ -250,7 +346,6 @@ export default function CreatePage() {
         const existing = events.find((e) => e.id === editingId);
         if (!existing) throw new Error("Evento no encontrado");
 
-        // Clean up old image if replaced or removed
         if (existing.image_url && existing.image_url !== finalImageUrl) {
           deleteStorageImage(existing.image_url).catch(() => {});
         }
@@ -347,9 +442,7 @@ export default function CreatePage() {
       const { error } = await supabase.from("sent_events").delete().eq("id", ev.id);
       if (error) throw error;
 
-      if (ev.image_url) {
-        deleteStorageImage(ev.image_url).catch(() => {});
-      }
+      if (ev.image_url) deleteStorageImage(ev.image_url).catch(() => {});
 
       setEvents((prev) => prev.filter((e) => e.id !== ev.id));
       if (editingId === ev.id) resetForm();
@@ -374,7 +467,7 @@ export default function CreatePage() {
 
   const hasOAuthProvider = user.provider !== null;
   const needsCalendarConnect = hasOAuthProvider && !calendarConnected;
-  const calendarRequired = hasOAuthProvider && (visibility === "private" || emails.trim().length > 0);
+  const calendarRequired = hasOAuthProvider && (visibility === "private" || attendees.length > 0);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
@@ -431,8 +524,7 @@ export default function CreatePage() {
                   : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300"
               }`}
             >
-              <Lock className="h-4 w-4" />
-              Privado
+              <Lock className="h-4 w-4" /> Privado
             </button>
             <button
               type="button"
@@ -443,8 +535,7 @@ export default function CreatePage() {
                   : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300"
               }`}
             >
-              <Globe className="h-4 w-4" />
-              Público
+              <Globe className="h-4 w-4" /> Público
             </button>
           </div>
           <p className="text-xs text-zinc-500 mb-4">
@@ -484,13 +575,92 @@ export default function CreatePage() {
                 />
               </div>
             </div>
-            <input
-              type="text"
-              value={emails}
-              onChange={(e) => setEmails(e.target.value)}
-              placeholder="Emails para invitar (opcional)"
-              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            />
+
+            {/* Attendee chip picker */}
+            <div ref={suggestionRef} className="relative">
+              <label className="block text-xs text-zinc-500 mb-1">Invitados (opcional)</label>
+              <div
+                className="min-h-[42px] w-full px-2 py-1.5 rounded-lg border border-zinc-300 focus-within:ring-2 focus-within:ring-blue-500 flex flex-wrap gap-1.5 cursor-text"
+                onClick={() => contactInputRef.current?.focus()}
+              >
+                {attendees.map((a) => (
+                  <span
+                    key={a.email}
+                    className="flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-full bg-blue-100 text-blue-900 text-xs font-medium"
+                  >
+                    {a.profile ? (
+                      <span className="flex items-center gap-1">
+                        <Avatar src={a.profile.avatar_url} name={a.profile.full_name} size="xs" />
+                        {a.profile.full_name ?? a.profile.username}
+                      </span>
+                    ) : (
+                      a.email
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeAttendee(a.email); }}
+                      className="ml-0.5 text-blue-600 hover:text-blue-900 rounded-full"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  ref={contactInputRef}
+                  type="text"
+                  value={contactInput}
+                  onChange={(e) => { setContactInput(e.target.value); setShowSuggestions(true); }}
+                  onKeyDown={handleContactKeyDown}
+                  onFocus={() => setShowSuggestions(true)}
+                  placeholder={attendees.length === 0 ? "Buscar contacto o escribir email…" : ""}
+                  className="flex-1 min-w-[160px] text-sm outline-none bg-transparent py-0.5"
+                />
+              </div>
+
+              {/* Suggestions dropdown */}
+              {showSuggestions && (contactInput.trim() !== "") && (
+                <ul className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                  {suggestions.length > 0 ? (
+                    suggestions.map((p) => (
+                      <li key={p.id}>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => selectContact(p)}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-zinc-50 text-left transition"
+                        >
+                          <Avatar src={p.avatar_url} name={p.full_name} size="sm" />
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium text-zinc-900 truncate">
+                              {p.full_name ?? p.username}
+                            </div>
+                            <div className="text-xs text-zinc-500 truncate">@{p.username}</div>
+                          </div>
+                        </button>
+                      </li>
+                    ))
+                  ) : (
+                    contactInput.includes("@") ? (
+                      <li>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => addAttendeeByEmail(contactInput)}
+                          className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-zinc-50 text-left text-sm text-zinc-700"
+                        >
+                          Agregar <span className="font-medium">{contactInput.trim()}</span>
+                        </button>
+                      </li>
+                    ) : (
+                      <li className="px-3 py-2.5 text-xs text-zinc-400">
+                        Sin contactos que coincidan. Escribí un email completo para invitar a alguien externo.
+                      </li>
+                    )
+                  )}
+                </ul>
+              )}
+            </div>
+
             <input
               type="text"
               value={location}
@@ -566,17 +736,11 @@ export default function CreatePage() {
               <div className="pt-2">
                 <p className="text-xs text-zinc-500 mb-2">Vista previa</p>
                 <div
-                  className={`rounded-2xl border overflow-hidden ${
-                    getEventColorStyles(color).card
-                  } ${getEventColorStyles(color).border}`}
+                  className={`rounded-2xl border overflow-hidden ${getEventColorStyles(color).card} ${getEventColorStyles(color).border}`}
                 >
                   {imagePreview && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imagePreview}
-                      alt={title || "Preview"}
-                      className="w-full h-32 object-cover"
-                    />
+                    <img src={imagePreview} alt={title || "Preview"} className="w-full h-32 object-cover" />
                   )}
                   <div className="p-4">
                     <h3 className="font-semibold text-zinc-900 truncate">
@@ -654,70 +818,66 @@ export default function CreatePage() {
                 {filtered.map((ev) => {
                   const evStyles = getEventColorStyles(ev.color);
                   return (
-                <li
-                  key={ev.id}
-                  className={`rounded-2xl border overflow-hidden shadow-sm transition ${evStyles.card} ${
-                    editingId === ev.id ? "border-blue-400 ring-2 ring-blue-100" : evStyles.border
-                  }`}
-                >
-                  {ev.image_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={ev.image_url}
-                      alt={ev.title}
-                      className="w-full h-32 object-cover"
-                    />
-                  )}
-                  <div className="flex items-start justify-between gap-3 p-4">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-zinc-900 truncate">{ev.title}</h3>
-                        {ev.visibility === "public" ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
-                            <Globe className="h-3 w-3" /> Público
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
-                            <Lock className="h-3 w-3" /> Privado
-                          </span>
-                        )}
+                    <li
+                      key={ev.id}
+                      className={`rounded-2xl border overflow-hidden shadow-sm transition ${evStyles.card} ${
+                        editingId === ev.id ? "border-blue-400 ring-2 ring-blue-100" : evStyles.border
+                      }`}
+                    >
+                      {ev.image_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={ev.image_url} alt={ev.title} className="w-full h-32 object-cover" />
+                      )}
+                      <div className="flex items-start justify-between gap-3 p-4">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-medium text-zinc-900 truncate">{ev.title}</h3>
+                            {ev.visibility === "public" ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                                <Globe className="h-3 w-3" /> Público
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                                <Lock className="h-3 w-3" /> Privado
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-zinc-500 mt-0.5">{formatDate(ev.start_at)}</p>
+                          {ev.location && (
+                            <p className="text-xs text-zinc-500 mt-0.5">📍 {ev.location}</p>
+                          )}
+                          {ev.attendee_emails.length > 0 && (
+                            <p className="text-xs text-zinc-400 mt-1.5 truncate">
+                              Para: {ev.attendee_emails.join(", ")}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => startEdit(ev)}
+                            disabled={deletingId === ev.id}
+                            aria-label="Editar"
+                            title="Editar"
+                            className="h-8 w-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition disabled:opacity-50"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(ev)}
+                            disabled={deletingId === ev.id}
+                            aria-label="Cancelar evento"
+                            title="Cancelar evento"
+                            className="h-8 w-8 flex items-center justify-center rounded-full text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                          >
+                            {deletingId === ev.id ? (
+                              <span className="text-xs">…</span>
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-xs text-zinc-500 mt-0.5">{formatDate(ev.start_at)}</p>
-                      {ev.location && (
-                        <p className="text-xs text-zinc-500 mt-0.5">📍 {ev.location}</p>
-                      )}
-                      {ev.attendee_emails.length > 0 && (
-                        <p className="text-xs text-zinc-400 mt-1.5 truncate">
-                          Para: {ev.attendee_emails.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        onClick={() => startEdit(ev)}
-                        disabled={deletingId === ev.id}
-                        aria-label="Editar"
-                        title="Editar"
-                        className="h-8 w-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition disabled:opacity-50"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(ev)}
-                        disabled={deletingId === ev.id}
-                        aria-label="Cancelar evento"
-                        title="Cancelar evento"
-                        className="h-8 w-8 flex items-center justify-center rounded-full text-red-600 hover:bg-red-50 transition disabled:opacity-50"
-                      >
-                        {deletingId === ev.id ? (
-                          <span className="text-xs">…</span>
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                </li>
+                    </li>
                   );
                 })}
               </ul>
