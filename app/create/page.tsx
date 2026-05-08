@@ -416,7 +416,18 @@ export default function CreatePage() {
       console.error("Submit error:", err);
       const msg =
         err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
-      toast.show("error", `No se pudo guardar: ${msg}`);
+      if (msg.toLowerCase().includes("insufficient authentication scope") ||
+          msg.toLowerCase().includes("invalid_grant") ||
+          msg.toLowerCase().includes("unauthorized")) {
+        // Token expired or missing calendar scope — force reconnect
+        if (user?.provider) {
+          localStorage.removeItem(`cal_connected_${user.provider}`);
+        }
+        setCalendarConnected(false);
+        toast.show("error", "Tu sesión del calendario venció. Reconectá tu calendario arriba.");
+      } else {
+        toast.show("error", `No se pudo guardar: ${msg}`);
+      }
     } finally {
       setSubmitting(false);
     }
