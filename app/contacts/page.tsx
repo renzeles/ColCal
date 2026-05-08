@@ -62,10 +62,10 @@ export default function ContactsPage() {
   async function handleInvite() {
     if (!user) return;
     const url = `${window.location.origin}/login?ref=${user.profile.username ?? ""}`;
-    const text = `¡Sumate a Agendi conmigo! ${url}`;
+    const text = `¡Sumate a Agenddi conmigo! ${url}`;
     if (navigator.share) {
       try {
-        await navigator.share({ title: "Agendi", text, url });
+        await navigator.share({ title: "Agenddi", text, url });
         return;
       } catch {
         // user cancelled or unsupported, fall through to clipboard
@@ -158,7 +158,7 @@ export default function ContactsPage() {
             ) : (
               <>
                 <Share2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Invitar a Agendi</span>
+                <span className="hidden sm:inline">Invitar a Agenddi</span>
                 <span className="sm:hidden">Invitar</span>
               </>
             )}
