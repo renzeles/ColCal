@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { UserPlus, UserMinus, Share2, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -24,9 +24,14 @@ export default function ContactsPage() {
   const [loading, setLoading] = useState(true);
 
   const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [busyId, setBusyId] = useState<string | null>(null);
   const [inviteCopied, setInviteCopied] = useState(false);
 
+  // Load own follows/mutuals
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
@@ -59,6 +64,29 @@ export default function ContactsPage() {
     })();
   }, [user]);
 
+  // Global user search — debounced, triggers when query is non-empty
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const q = query.trim();
+    if (!q || !user) {
+      setSearchResults(null);
+      setSearching(false);
+      return;
+    }
+    setSearching(true);
+    searchTimer.current = setTimeout(async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+        .neq("id", user.id)
+        .limit(30);
+      setSearchResults((data as Profile[]) ?? []);
+      setSearching(false);
+    }, 300);
+  }, [query, user]);
+
   async function handleInvite() {
     if (!user) return;
     const url = `${window.location.origin}/login?ref=${user.profile.username ?? ""}`;
@@ -68,7 +96,7 @@ export default function ContactsPage() {
         await navigator.share({ title: "Agenddi", text, url });
         return;
       } catch {
-        // user cancelled or unsupported, fall through to clipboard
+        // cancelled or unsupported
       }
     }
     try {
@@ -116,16 +144,17 @@ export default function ContactsPage() {
     }
   }
 
-  const list = useMemo(() => {
+  const tabList = useMemo(() => {
     const base = tab === "mutuals" ? mutuals : following;
     const q = query.trim().toLowerCase();
-    if (!q) return base;
+    // Only filter tab list when not in search mode
+    if (!q || searchResults !== null) return base;
     return base.filter(
       (p) =>
         (p.username ?? "").toLowerCase().includes(q) ||
         (p.full_name ?? "").toLowerCase().includes(q)
     );
-  }, [tab, mutuals, following, query]);
+  }, [tab, mutuals, following, query, searchResults]);
 
   if (userLoading || !user) {
     return (
@@ -134,6 +163,8 @@ export default function ContactsPage() {
       </div>
     );
   }
+
+  const isSearchMode = searchResults !== null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
@@ -168,80 +199,110 @@ export default function ContactsPage() {
         <SearchBar
           value={query}
           onChange={setQuery}
-          placeholder="Buscar por nombre o usuario…"
+          placeholder="Buscar usuarios en Agenddi…"
         />
 
-        <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1">
-          <button
-            onClick={() => setTab("mutuals")}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-              tab === "mutuals" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            Contactos ({mutuals.length})
-          </button>
-          <button
-            onClick={() => setTab("following")}
-            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
-              tab === "following" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            Seguidos ({following.length})
-          </button>
-        </div>
+        {!isSearchMode && (
+          <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1">
+            <button
+              onClick={() => setTab("mutuals")}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                tab === "mutuals" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
+              }`}
+            >
+              Contactos ({mutuals.length})
+            </button>
+            <button
+              onClick={() => setTab("following")}
+              className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${
+                tab === "following" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
+              }`}
+            >
+              Seguidos ({following.length})
+            </button>
+          </div>
+        )}
 
-        {loading ? (
+        {isSearchMode ? (
+          searching ? (
+            <div className="text-sm text-zinc-500 text-center py-8">Buscando…</div>
+          ) : searchResults.length === 0 ? (
+            <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200">
+              No se encontraron usuarios con ese nombre.
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {searchResults.map((p) => (
+                <UserRow
+                  key={p.id}
+                  profile={p}
+                  iFollow={followingIds.has(p.id)}
+                  busy={busyId === p.id}
+                  onToggle={() => toggleFollow(p)}
+                />
+              ))}
+            </ul>
+          )
+        ) : loading ? (
           <div className="text-sm text-zinc-500 text-center py-8">Cargando…</div>
-        ) : list.length === 0 ? (
+        ) : tabList.length === 0 ? (
           <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200">
-            {query.trim()
-              ? "Sin resultados."
-              : tab === "mutuals"
+            {tab === "mutuals"
               ? "Todavía no tenés contactos en común."
               : "Todavía no seguís a nadie."}
           </div>
         ) : (
           <ul className="space-y-2">
-            {list.map((p) => {
-              const iFollow = followingIds.has(p.id);
-              return (
-                <li
-                  key={p.id}
-                  className="bg-white rounded-xl border border-zinc-200 p-3 flex items-center gap-3"
-                >
-                  <Link href={`/u/${p.username}`}>
-                    <Avatar src={p.avatar_url} name={p.full_name} size="md" />
-                  </Link>
-                  <Link href={`/u/${p.username}`} className="flex-1 min-w-0 hover:underline">
-                    <div className="font-medium text-zinc-900 truncate">
-                      {p.full_name ?? p.username}
-                    </div>
-                    <div className="text-xs text-zinc-500 truncate">@{p.username}</div>
-                  </Link>
-                  <button
-                    onClick={() => toggleFollow(p)}
-                    disabled={busyId === p.id}
-                    className={`flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold transition disabled:opacity-60 ${
-                      iFollow
-                        ? "bg-zinc-100 text-zinc-700 hover:bg-red-50 hover:text-red-600"
-                        : "bg-blue-600 text-white hover:bg-blue-700"
-                    }`}
-                  >
-                    {iFollow ? (
-                      <UserMinus className="h-3.5 w-3.5" />
-                    ) : (
-                      <UserPlus className="h-3.5 w-3.5" />
-                    )}
-                    {iFollow ? "Siguiendo" : "Seguir"}
-                  </button>
-                </li>
-              );
-            })}
+            {tabList.map((p) => (
+              <UserRow
+                key={p.id}
+                profile={p}
+                iFollow={followingIds.has(p.id)}
+                busy={busyId === p.id}
+                onToggle={() => toggleFollow(p)}
+              />
+            ))}
           </ul>
         )}
       </main>
 
       <Toast state={toast.state} />
     </div>
+  );
+}
+
+function UserRow({
+  profile: p,
+  iFollow,
+  busy,
+  onToggle,
+}: {
+  profile: Profile;
+  iFollow: boolean;
+  busy: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li className="bg-white rounded-xl border border-zinc-200 p-3 flex items-center gap-3">
+      <Link href={`/u/${p.username}`}>
+        <Avatar src={p.avatar_url} name={p.full_name} size="md" />
+      </Link>
+      <Link href={`/u/${p.username}`} className="flex-1 min-w-0 hover:underline">
+        <div className="font-medium text-zinc-900 truncate">{p.full_name ?? p.username}</div>
+        <div className="text-xs text-zinc-500 truncate">@{p.username}</div>
+      </Link>
+      <button
+        onClick={onToggle}
+        disabled={busy}
+        className={`flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold transition disabled:opacity-60 ${
+          iFollow
+            ? "bg-zinc-100 text-zinc-700 hover:bg-red-50 hover:text-red-600"
+            : "bg-blue-600 text-white hover:bg-blue-700"
+        }`}
+      >
+        {iFollow ? <UserMinus className="h-3.5 w-3.5" /> : <UserPlus className="h-3.5 w-3.5" />}
+        {iFollow ? "Siguiendo" : "Seguir"}
+      </button>
+    </li>
   );
 }
