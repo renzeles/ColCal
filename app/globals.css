@@ -12,97 +12,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* FullCalendar Apple-style overrides */
-.fc {
-  --fc-border-color: rgb(0 0 0 / 0.06);
-  --fc-today-bg-color: rgb(0 122 255 / 0.06);
-  --fc-event-bg-color: #007aff;
-  --fc-event-border-color: #007aff;
-  --fc-page-bg-color: transparent;
-  --fc-neutral-bg-color: transparent;
-  font-size: 13px;
+/* Prevent iOS Safari zoom-on-focus by ensuring inputs are at least 16px on small screens */
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important;
+  }
 }
 
-.dark .fc {
-  --fc-border-color: rgb(255 255 255 / 0.08);
-  --fc-today-bg-color: rgb(0 122 255 / 0.12);
-  --fc-neutral-bg-color: rgb(255 255 255 / 0.02);
-  --fc-page-bg-color: transparent;
+/* Allow long words/URLs to wrap instead of overflowing on narrow screens */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.fc .fc-toolbar-title {
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.fc .fc-col-header-cell-cushion,
-.fc .fc-daygrid-day-number {
-  padding: 6px 8px;
-  color: rgb(82 82 91);
-  text-decoration: none;
-}
-
-.dark .fc .fc-col-header-cell-cushion,
-.dark .fc .fc-daygrid-day-number {
-  color: rgb(212 212 216);
-}
-
-.fc .fc-event {
-  border-radius: 6px;
-  padding: 2px 4px;
-  border: none;
-  font-weight: 500;
-}
-
-.fc .fc-button {
-  background: transparent !important;
-  border: 1px solid rgb(0 0 0 / 0.08) !important;
-  color: rgb(39 39 42) !important;
-  font-weight: 500 !important;
-  border-radius: 8px !important;
-  padding: 4px 12px !important;
-  text-transform: none !important;
-  box-shadow: none !important;
-}
-
-.dark .fc .fc-button {
-  border-color: rgb(255 255 255 / 0.1) !important;
-  color: rgb(228 228 231) !important;
-}
-
-.fc .fc-button:hover {
-  background: rgb(0 0 0 / 0.04) !important;
-}
-
-.dark .fc .fc-button:hover {
-  background: rgb(255 255 255 / 0.05) !important;
-}
-
-.fc .fc-button-primary:not(:disabled).fc-button-active {
-  background: rgb(0 122 255 / 0.1) !important;
-  border-color: rgb(0 122 255 / 0.3) !important;
-  color: #007aff !important;
-}
-
-/* Days outside current month — match container background (dayGrid + multimonth) */
-.fc .fc-day-other,
-.fc-multimonth .fc-day-other,
-.fc-multimonth-daygrid .fc-day-other {
-  background-color: transparent !important;
-}
-
-.fc .fc-day-other .fc-daygrid-day-number,
-.fc-multimonth .fc-day-other .fc-daygrid-day-number {
-  opacity: 0.2;
-}
-
-/* Multimonth year view: padding rows at start/end of mini-months */
-.fc-multimonth-daygrid-table td.fc-day-other {
-  background: transparent !important;
-}
-
-/* Custom dark-blue scrollbar (site-wide) */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -111,21 +33,13 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1e3a5f;
+  background: #cbd5e1;
   border-radius: 99px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #1a4080;
+  background: #94a3b8;
 }
 * {
   scrollbar-width: thin;
-  scrollbar-color: #1e3a5f transparent;
-}
-
-/* Hide scrollbars in sidebar but allow scroll */
-.scrollbar-hidden::-webkit-scrollbar {
-  display: none;
-}
-.scrollbar-hidden {
-  scrollbar-width: none;
+  scrollbar-color: #cbd5e1 transparent;
 }

@@ -1,75 +1,34 @@
 export type Profile = {
   id: string;
+  email: string | null;
   username: string | null;
   full_name: string | null;
   avatar_url: string | null;
-  created_at: string;
+  description: string | null;
 };
 
-export type CalendarEvent = {
+export type CalendarProvider = "google" | "microsoft";
+
+export type EventVisibility = "public" | "private";
+
+export type SentEvent = {
   id: string;
   creator_id: string;
   title: string;
-  description: string | null;
-  image_url: string | null;
   start_at: string;
-  end_at: string | null;
+  end_at: string;
   location: string | null;
-  is_public: boolean;
-  group_id?: string | null;
-  created_at: string;
-  creator?: Profile;
-};
-
-export type GroupItem = {
-  id: string;
-  name: string;
   description: string | null;
-  avatar_url: string | null;
-  member_count: number;
-  my_role: string;
-};
-
-export type GroupMember = {
-  id: string;
-  full_name: string | null;
-  avatar_url: string | null;
-  role: string;
-};
-
-export type Group = {
-  id: string;
-  name: string;
-  description: string | null;
-  avatar_url: string | null;
-  created_by: string;
+  attendee_emails: string[];
+  provider: CalendarProvider;
+  provider_event_id: string | null;
+  visibility: EventVisibility;
+  image_url: string | null;
   created_at: string;
 };
 
-export type Friendship = {
-  id: string;
-  requester_id: string;
-  addressee_id: string;
-  status: "pending" | "accepted" | "rejected";
+export type Follow = {
+  follower_id: string;
+  following_id: string;
   created_at: string;
 };
-
-export type SidebarSelection =
-  | { kind: "self" }
-  | { kind: "friend"; id: string; name: string; avatar?: string | null }
-  | { kind: "group"; id: string; name: string; avatar?: string | null }
-  | { kind: "place"; id: string; name: string };
-
-export type CalendarView = "grid" | "feed";
-
-export type AppNotification = {
-  id: string;
-  type: "calendar_request" | "calendar_approved" | "calendar_rejected";
-  from_user_id: string | null;
-  from_user_name: string | null;
-  from_user_avatar: string | null;
-  read: boolean;
-  created_at: string;
-};
-
-export type PermissionStatus = "none" | "pending" | "approved" | "rejected";

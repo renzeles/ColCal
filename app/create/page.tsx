@@ -1,0 +1,655 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { Pencil, Trash2, Globe, Lock, ImagePlus, X } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { createGCalEvent, updateGCalEvent, deleteGCalEvent } from "@/lib/google-calendar";
+import { createMSEvent, updateMSEvent, deleteMSEvent } from "@/lib/microsoft-calendar";
+import { useUser } from "@/lib/use-user";
+import { NavBar } from "@/components/NavBar";
+import { SearchBar } from "@/components/SearchBar";
+import { Toast, useToast } from "@/components/Toast";
+import type { CalendarProvider, EventVisibility, SentEvent } from "@/lib/types";
+
+const PROVIDER_LABEL: Record<CalendarProvider, string> = {
+  google: "Google Calendar",
+  microsoft: "Outlook Calendar",
+};
+
+const PROVIDER_SCOPES: Record<CalendarProvider, string> = {
+  google: "https://www.googleapis.com/auth/calendar.events",
+  microsoft: "Calendars.ReadWrite offline_access",
+};
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function toLocalInput(iso: string) {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export default function CreatePage() {
+  const { user, loading, signOut } = useUser();
+  const toast = useToast();
+  const [events, setEvents] = useState<SentEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
+  const [calendarConnected, setCalendarConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [title, setTitle] = useState("");
+  const [visibility, setVisibility] = useState<EventVisibility>("private");
+  const [startAt, setStartAt] = useState("");
+  const [endAt, setEndAt] = useState("");
+  const [emails, setEmails] = useState("");
+  const [location, setLocation] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  const formRef = useRef<HTMLFormElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!imageFile) {
+      setFilePreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(imageFile);
+    setFilePreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imageFile]);
+  const imagePreview = filePreviewUrl ?? imageUrl;
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const flag = user.provider
+        ? localStorage.getItem(`cal_connected_${user.provider}`) === "true"
+        : false;
+      setCalendarConnected(Boolean(session?.provider_token) && flag);
+
+      const { data: rows } = await supabase
+        .from("sent_events")
+        .select("*")
+        .eq("creator_id", user.id)
+        .order("created_at", { ascending: false });
+      setEvents((rows ?? []) as SentEvent[]);
+      setEventsLoading(false);
+
+      if (user.provider && new URLSearchParams(window.location.search).get("connected") === "1") {
+        localStorage.setItem(`cal_connected_${user.provider}`, "true");
+        setCalendarConnected(true);
+        window.history.replaceState({}, "", "/create");
+      }
+    })();
+  }, [user]);
+
+  async function handleConnectCalendar() {
+    if (connecting || !user || !user.provider) return;
+    setConnecting(true);
+    const supabase = createClient();
+    const oauthProvider = user.provider === "microsoft" ? "azure" : "google";
+    const queryParams: { [key: string]: string } =
+      user.provider === "google"
+        ? { access_type: "offline", prompt: "consent" }
+        : { prompt: "consent" };
+    await supabase.auth.signInWithOAuth({
+      provider: oauthProvider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent("/create?connected=1")}`,
+        scopes: PROVIDER_SCOPES[user.provider],
+        queryParams,
+      },
+    });
+  }
+
+  function resetForm() {
+    setEditingId(null);
+    setTitle("");
+    setVisibility("private");
+    setStartAt("");
+    setEndAt("");
+    setEmails("");
+    setLocation("");
+    setDescription("");
+    setImageFile(null);
+    setImageUrl(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  }
+
+  function startEdit(ev: SentEvent) {
+    setEditingId(ev.id);
+    setTitle(ev.title);
+    setVisibility(ev.visibility);
+    setStartAt(toLocalInput(ev.start_at));
+    setEndAt(toLocalInput(ev.end_at));
+    setEmails(ev.attendee_emails.join(", "));
+    setLocation(ev.location ?? "");
+    setDescription(ev.description ?? "");
+    setImageFile(null);
+    setImageUrl(ev.image_url);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast.show("error", "Solo se permiten imágenes JPG, PNG, WebP o GIF.");
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.show("error", "La imagen no puede pesar más de 5 MB.");
+      e.target.value = "";
+      return;
+    }
+    setImageFile(file);
+    setImageUrl(null);
+  }
+
+  function clearImage() {
+    setImageFile(null);
+    setImageUrl(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
+  }
+
+  async function uploadImage(file: File): Promise<string> {
+    if (!user) throw new Error("No user");
+    const supabase = createClient();
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
+    const { error } = await supabase.storage
+      .from("event-images")
+      .upload(path, file, { contentType: file.type, cacheControl: "3600" });
+    if (error) throw error;
+    const { data } = supabase.storage.from("event-images").getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  async function deleteStorageImage(url: string) {
+    const marker = "/event-images/";
+    const idx = url.indexOf(marker);
+    if (idx === -1) return;
+    const path = url.slice(idx + marker.length);
+    const supabase = createClient();
+    await supabase.storage.from("event-images").remove([path]);
+  }
+
+  async function getProviderToken(): Promise<string | null> {
+    const supabase = createClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.provider_token ?? null;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (submitting || !user) return;
+    setSubmitting(true);
+
+    try {
+      const attendeeEmails = emails
+        .split(/[\s,;]+/)
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0);
+
+      const start = new Date(startAt);
+      const end = new Date(endAt);
+      const supabase = createClient();
+
+      // Resolve final image URL: upload new file, keep existing, or null
+      let finalImageUrl: string | null = imageUrl;
+      if (imageFile) {
+        finalImageUrl = await uploadImage(imageFile);
+      }
+
+      const eventArgs = {
+        title,
+        description,
+        location,
+        startAt: start,
+        endAt: end,
+        attendeeEmails,
+        imageUrl: finalImageUrl ?? undefined,
+      };
+
+      // Only push to provider calendar if user has OAuth + there are attendees
+      const needsProviderCall = user.provider !== null && attendeeEmails.length > 0;
+      let token: string | null = null;
+      if (needsProviderCall) {
+        token = await getProviderToken();
+        if (!token) {
+          toast.show("error", "No hay token del calendario. Reconectá tu calendario.");
+          return;
+        }
+      }
+
+      if (editingId) {
+        const existing = events.find((e) => e.id === editingId);
+        if (!existing) throw new Error("Evento no encontrado");
+
+        // Clean up old image if replaced or removed
+        if (existing.image_url && existing.image_url !== finalImageUrl) {
+          deleteStorageImage(existing.image_url).catch(() => {});
+        }
+
+        if (token && existing.provider_event_id) {
+          if (existing.provider === "microsoft") {
+            await updateMSEvent({ ...eventArgs, msToken: token, eventId: existing.provider_event_id });
+          } else {
+            await updateGCalEvent({ ...eventArgs, googleToken: token, eventId: existing.provider_event_id });
+          }
+        }
+
+        const { data: updated, error } = await supabase
+          .from("sent_events")
+          .update({
+            title,
+            visibility,
+            start_at: start.toISOString(),
+            end_at: end.toISOString(),
+            location: location || null,
+            description: description || null,
+            attendee_emails: attendeeEmails,
+            image_url: finalImageUrl,
+          })
+          .eq("id", editingId)
+          .select()
+          .single();
+
+        if (error) throw error;
+        setEvents((prev) => prev.map((e) => (e.id === editingId ? (updated as SentEvent) : e)));
+        toast.show("success", "Evento actualizado");
+      } else {
+        let providerEventId: string | null = null;
+        if (token) {
+          providerEventId =
+            user.provider === "microsoft"
+              ? await createMSEvent({ ...eventArgs, msToken: token })
+              : await createGCalEvent({ ...eventArgs, googleToken: token });
+        }
+
+        const { data: inserted, error } = await supabase
+          .from("sent_events")
+          .insert({
+            creator_id: user.id,
+            title,
+            visibility,
+            start_at: start.toISOString(),
+            end_at: end.toISOString(),
+            location: location || null,
+            description: description || null,
+            attendee_emails: attendeeEmails,
+            provider: user.provider ?? "google",
+            provider_event_id: providerEventId,
+            image_url: finalImageUrl,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        setEvents((prev) => [inserted as SentEvent, ...prev]);
+        toast.show("success", visibility === "public" ? "Evento publicado" : "Evento enviado");
+      }
+
+      resetForm();
+    } catch (err) {
+      console.error("Submit error:", err);
+      const msg =
+        err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+      toast.show("error", `No se pudo guardar: ${msg}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDelete(ev: SentEvent) {
+    if (deletingId) return;
+    if (!confirm(`¿Cancelar "${ev.title}"?`)) return;
+    setDeletingId(ev.id);
+    try {
+      if (ev.provider_event_id && ev.attendee_emails.length > 0) {
+        const token = await getProviderToken();
+        if (token) {
+          if (ev.provider === "microsoft") {
+            await deleteMSEvent(token, ev.provider_event_id);
+          } else {
+            await deleteGCalEvent(token, ev.provider_event_id);
+          }
+        }
+      }
+
+      const supabase = createClient();
+      const { error } = await supabase.from("sent_events").delete().eq("id", ev.id);
+      if (error) throw error;
+
+      if (ev.image_url) {
+        deleteStorageImage(ev.image_url).catch(() => {});
+      }
+
+      setEvents((prev) => prev.filter((e) => e.id !== ev.id));
+      if (editingId === ev.id) resetForm();
+      toast.show("success", "Evento cancelado");
+    } catch (err) {
+      console.error("Delete error:", err);
+      const msg =
+        err instanceof Error ? err.message : typeof err === "string" ? err : JSON.stringify(err);
+      toast.show("error", `No se pudo cancelar: ${msg}`);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  if (loading || !user || eventsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-zinc-500 text-sm">Cargando…</div>
+      </div>
+    );
+  }
+
+  const hasOAuthProvider = user.provider !== null;
+  const needsCalendarConnect = hasOAuthProvider && !calendarConnected;
+  const calendarRequired = hasOAuthProvider && (visibility === "private" || emails.trim().length > 0);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+      <NavBar
+        username={user.profile.username}
+        fullName={user.profile.full_name}
+        avatarUrl={user.profile.avatar_url}
+        onSignOut={signOut}
+      />
+
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-8">
+        {needsCalendarConnect && user.provider && (
+          <section className="bg-blue-50 border border-blue-200 rounded-2xl p-6 text-center">
+            <h2 className="text-base font-semibold text-zinc-900 mb-2">
+              Conectá tu {PROVIDER_LABEL[user.provider]}
+            </h2>
+            <p className="text-sm text-zinc-600 mb-4">
+              Necesitás darle permiso a la app para crear eventos en tu calendario (solo si querés
+              invitar gente). Para eventos públicos sin invitados podés saltearlo.
+            </p>
+            <button
+              onClick={handleConnectCalendar}
+              disabled={connecting}
+              className="px-4 h-10 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-60"
+            >
+              {connecting ? "Conectando…" : `Conectar ${PROVIDER_LABEL[user.provider]}`}
+            </button>
+          </section>
+        )}
+
+        <section className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-semibold text-zinc-900">
+              {editingId ? "Editar evento" : "Nuevo evento"}
+            </h2>
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="text-xs text-zinc-500 hover:text-zinc-900 transition"
+              >
+                Cancelar edición
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setVisibility("private")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                visibility === "private"
+                  ? "bg-zinc-900 text-white border-zinc-900"
+                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300"
+              }`}
+            >
+              <Lock className="h-4 w-4" />
+              Privado
+            </button>
+            <button
+              type="button"
+              onClick={() => setVisibility("public")}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium border transition ${
+                visibility === "public"
+                  ? "bg-violet-600 text-white border-violet-600"
+                  : "bg-white text-zinc-600 border-zinc-200 hover:border-zinc-300"
+              }`}
+            >
+              <Globe className="h-4 w-4" />
+              Público
+            </button>
+          </div>
+          <p className="text-xs text-zinc-500 mb-4">
+            {visibility === "private"
+              ? "Solo los invitados verán este evento. Recibirán una invitación al calendario."
+              : "Aparecerá en tu perfil público. Los invitados son opcionales."}
+          </p>
+
+          <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Título"
+              required
+              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Inicio</label>
+                <input
+                  type="datetime-local"
+                  value={startAt}
+                  onChange={(e) => setStartAt(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-zinc-500 mb-1">Fin</label>
+                <input
+                  type="datetime-local"
+                  value={endAt}
+                  onChange={(e) => setEndAt(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
+            </div>
+            <input
+              type="text"
+              value={emails}
+              onChange={(e) => setEmails(e.target.value)}
+              placeholder="Emails para invitar (opcional)"
+              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="Ubicación (opcional)"
+              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            />
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descripción (opcional)"
+              rows={3}
+              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+            />
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+            {imagePreview ? (
+              <div className="relative rounded-lg overflow-hidden border border-zinc-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imagePreview} alt="Imagen del evento" className="w-full h-48 object-cover" />
+                <button
+                  type="button"
+                  onClick={clearImage}
+                  aria-label="Quitar imagen"
+                  className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full flex items-center justify-center gap-2 px-3 py-3 rounded-lg border border-dashed border-zinc-300 text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 transition text-sm"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Subir imagen (opcional)
+              </button>
+            )}
+
+            <button
+              type="submit"
+              disabled={submitting || (calendarRequired && needsCalendarConnect)}
+              className="w-full h-11 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {submitting
+                ? "Guardando…"
+                : editingId
+                ? "Guardar cambios"
+                : visibility === "public"
+                ? "Publicar evento"
+                : "Enviar evento"}
+            </button>
+            {calendarRequired && needsCalendarConnect && (
+              <p className="text-xs text-amber-600 text-center">
+                Conectá tu calendario para invitar gente.
+              </p>
+            )}
+          </form>
+        </section>
+
+        <section>
+          <h2 className="text-base font-semibold text-zinc-900 mb-3">Tus eventos</h2>
+          <div className="mb-3">
+            <SearchBar value={query} onChange={setQuery} placeholder="Buscar tus eventos…" />
+          </div>
+          {(() => {
+            const q = query.trim().toLowerCase();
+            const filtered = q
+              ? events.filter(
+                  (e) =>
+                    e.title.toLowerCase().includes(q) ||
+                    (e.description ?? "").toLowerCase().includes(q) ||
+                    (e.location ?? "").toLowerCase().includes(q) ||
+                    e.attendee_emails.some((em) => em.toLowerCase().includes(q))
+                )
+              : events;
+            if (filtered.length === 0) {
+              return (
+                <div className="text-sm text-zinc-500 text-center py-8 bg-white rounded-2xl border border-zinc-200">
+                  {q ? "Sin resultados." : "Todavía no creaste ningún evento."}
+                </div>
+              );
+            }
+            return (
+              <ul className="space-y-2">
+                {filtered.map((ev) => (
+                <li
+                  key={ev.id}
+                  className={`bg-white rounded-xl border overflow-hidden transition ${
+                    editingId === ev.id ? "border-blue-400 ring-2 ring-blue-100" : "border-zinc-200"
+                  }`}
+                >
+                  {ev.image_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={ev.image_url}
+                      alt={ev.title}
+                      className="w-full h-32 object-cover"
+                    />
+                  )}
+                  <div className="flex items-start justify-between gap-3 p-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-zinc-900 truncate">{ev.title}</h3>
+                        {ev.visibility === "public" ? (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-700">
+                            <Globe className="h-3 w-3" /> Público
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
+                            <Lock className="h-3 w-3" /> Privado
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-zinc-500 mt-0.5">{formatDate(ev.start_at)}</p>
+                      {ev.location && (
+                        <p className="text-xs text-zinc-500 mt-0.5">📍 {ev.location}</p>
+                      )}
+                      {ev.attendee_emails.length > 0 && (
+                        <p className="text-xs text-zinc-400 mt-1.5 truncate">
+                          Para: {ev.attendee_emails.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={() => startEdit(ev)}
+                        disabled={deletingId === ev.id}
+                        aria-label="Editar"
+                        title="Editar"
+                        className="h-8 w-8 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition disabled:opacity-50"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(ev)}
+                        disabled={deletingId === ev.id}
+                        aria-label="Cancelar evento"
+                        title="Cancelar evento"
+                        className="h-8 w-8 flex items-center justify-center rounded-full text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                      >
+                        {deletingId === ev.id ? (
+                          <span className="text-xs">…</span>
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              ))}
+              </ul>
+            );
+          })()}
+        </section>
+      </main>
+
+      <Toast state={toast.state} />
+    </div>
+  );
+}

@@ -1,231 +1,236 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Sidebar, type Friend } from "@/components/sidebar/Sidebar";
-import { CalendarArea } from "@/components/calendar/CalendarArea";
-import { EventModal } from "@/components/calendar/EventModal";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Calendar, Globe, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import type {
-  AppNotification,
-  CalendarEvent,
-  GroupItem,
-  GroupMember,
-  PermissionStatus,
-  SidebarSelection,
-} from "@/lib/types";
-import { useT } from "@/lib/i18n";
+import { useUser } from "@/lib/use-user";
+import { NavBar } from "@/components/NavBar";
+import { Avatar } from "@/components/Avatar";
+import { SearchBar } from "@/components/SearchBar";
+import { Toast, useToast } from "@/components/Toast";
+import type { Profile, SentEvent } from "@/lib/types";
 
-type UserInfo = {
-  id: string;
-  name: string | null;
-  email: string | null;
-  avatar: string | null;
-};
+type FeedItem = SentEvent & { creator: Profile };
+type Filter = "public" | "private";
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
 
 export default function HomePage() {
-  const { t } = useT();
-  const [selection, setSelection] = useState<SidebarSelection>({ kind: "self" });
-  const [user, setUser] = useState<UserInfo | null>(null);
-
-  // Own events
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  // Friends
-  const [friends, setFriends] = useState<Friend[]>([]);
-  // Groups
-  const [groups, setGroups] = useState<GroupItem[]>([]);
-
-  // Whatever is shown in the calendar area
-  const [displayedEvents, setDisplayedEvents] = useState<CalendarEvent[]>([]);
-
-  // Friend calendar permission
-  const [friendPermission, setFriendPermission] = useState<PermissionStatus>("none");
-  const [requestingAccess, setRequestingAccess] = useState(false);
-
-  // Group members
-  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
-
-  // Notifications
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-
-  // Event modal
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-
+  const { user, loading: userLoading, signOut } = useUser();
+  const toast = useToast();
+  const [publicItems, setPublicItems] = useState<FeedItem[]>([]);
+  const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [filter, setFilter] = useState<Filter>("public");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
+    if (!user) return;
     const supabase = createClient();
     (async () => {
-      const { data: auth } = await supabase.auth.getUser();
-      const u = auth.user;
-      if (!u) { window.location.href = "/login"; return; }
-      setUser({
-        id: u.id,
-        name: (u.user_metadata?.full_name as string) ?? (u.user_metadata?.name as string) ?? null,
-        email: u.email ?? null,
-        avatar: (u.user_metadata?.avatar_url as string) ?? null,
-      });
+      setLoading(true);
 
-      const [{ data: rows }, { data: friendRows }, { data: groupRows }, { data: notifRows }] =
-        await Promise.all([
-          supabase.from("events").select("*").is("group_id", null).order("start_at", { ascending: true }),
-          supabase.rpc("list_friends"),
-          supabase.rpc("list_my_groups"),
-          supabase.rpc("get_notifications"),
-        ]);
-      setEvents((rows ?? []) as CalendarEvent[]);
-      setDisplayedEvents((rows ?? []) as CalendarEvent[]);
-      setFriends((friendRows ?? []) as Friend[]);
-      setGroups((groupRows ?? []) as GroupItem[]);
-      setNotifications((notifRows ?? []) as AppNotification[]);
+      // Public events from people I follow
+      const { data: follows } = await supabase
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id);
+      const followedIds = (follows ?? []).map((f) => f.following_id);
+      setFollowingCount(followedIds.length);
+
+      // Private events I'm invited to
+      const privateQuery = user.email
+        ? supabase
+            .from("sent_events")
+            .select("*")
+            .eq("visibility", "private")
+            .contains("attendee_emails", [user.email])
+            .neq("creator_id", user.id)
+            .order("start_at", { ascending: false })
+            .limit(100)
+        : null;
+
+      const publicQuery =
+        followedIds.length > 0
+          ? supabase
+              .from("sent_events")
+              .select("*")
+              .in("creator_id", followedIds)
+              .eq("visibility", "public")
+              .order("start_at", { ascending: false })
+              .limit(100)
+          : null;
+
+      const [publicRes, privateRes] = await Promise.all([
+        publicQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
+        privateQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
+      ]);
+
+      const allCreatorIds = Array.from(
+        new Set([
+          ...((publicRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
+          ...((privateRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
+        ])
+      );
+
+      const profileMap = new Map<string, Profile>();
+      if (allCreatorIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", allCreatorIds);
+        (profiles ?? []).forEach((p) => profileMap.set(p.id, p as Profile));
+      }
+
+      function withCreator(events: SentEvent[]): FeedItem[] {
+        return events
+          .map((e) => {
+            const creator = profileMap.get(e.creator_id);
+            if (!creator) return null;
+            return { ...e, creator };
+          })
+          .filter((x): x is FeedItem => x !== null);
+      }
+
+      setPublicItems(withCreator((publicRes.data ?? []) as SentEvent[]));
+      setPrivateItems(withCreator((privateRes.data ?? []) as SentEvent[]));
       setLoading(false);
     })();
-  }, []);
+  }, [user]);
 
-  // When selection changes, load the right events + metadata
-  useEffect(() => {
-    if (selection.kind === "self") {
-      setDisplayedEvents(events);
-      setFriendPermission("none");
-      setGroupMembers([]);
-      return;
-    }
-    const supabase = createClient();
-    if (selection.kind === "friend") {
-      const friendId = selection.id;
-      setGroupMembers([]);
-      (async () => {
-        const [{ data: evRows }, { data: permStatus }] = await Promise.all([
-          supabase.rpc("get_friend_events", { _friend_id: friendId }),
-          supabase.rpc("get_calendar_permission_status", { _owner_id: friendId }),
-        ]);
-        setDisplayedEvents((evRows ?? []) as CalendarEvent[]);
-        setFriendPermission((permStatus as PermissionStatus) ?? "none");
-      })();
-    } else if (selection.kind === "group") {
-      const groupId = selection.id;
-      setFriendPermission("none");
-      (async () => {
-        const [{ data: evRows }, { data: memberRows }] = await Promise.all([
-          supabase.rpc("get_group_events", { _group_id: groupId }),
-          supabase.rpc("get_group_members", { _group_id: groupId }),
-        ]);
-        setDisplayedEvents((evRows ?? []) as CalendarEvent[]);
-        setGroupMembers((memberRows ?? []) as GroupMember[]);
-      })();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection]);
-
-  // Keep own events in sync when viewing self
-  useEffect(() => {
-    if (selection.kind === "self") setDisplayedEvents(events);
-  }, [events, selection]);
-
-  async function handleRequestAccess() {
-    if (selection.kind !== "friend") return;
-    setRequestingAccess(true);
-    const supabase = createClient();
-    await supabase.rpc("request_calendar_access", { _owner_id: selection.id });
-    setFriendPermission("pending");
-    setRequestingAccess(false);
-  }
-
-  async function handleRespondNotification(fromUserId: string, approved: boolean) {
-    const supabase = createClient();
-    await supabase.rpc("respond_calendar_request", { _viewer_id: fromUserId, _approved: approved });
-    setNotifications((prev) =>
-      prev.map((n) =>
-        n.type === "calendar_request" && n.from_user_id === fromUserId ? { ...n, read: true } : n
-      )
+  const items = useMemo(() => {
+    const base = filter === "public" ? publicItems : privateItems;
+    const q = query.trim().toLowerCase();
+    if (!q) return base;
+    return base.filter(
+      (ev) =>
+        ev.title.toLowerCase().includes(q) ||
+        (ev.description ?? "").toLowerCase().includes(q) ||
+        (ev.location ?? "").toLowerCase().includes(q) ||
+        (ev.creator.username ?? "").toLowerCase().includes(q) ||
+        (ev.creator.full_name ?? "").toLowerCase().includes(q)
     );
-  }
+  }, [filter, publicItems, privateItems, query]);
 
-  const handleMarkNotificationsRead = useCallback(async () => {
-    const supabase = createClient();
-    await supabase.rpc("mark_notifications_read");
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
-
-  function openCreate() {
-    setEditingEvent(null);
-    setModalOpen(true);
-  }
-
-  function openEdit(ev: CalendarEvent) {
-    setEditingEvent(ev);
-    setModalOpen(true);
-  }
-
-  function handleCreated(ev: CalendarEvent) {
-    if (selection.kind === "group") {
-      setDisplayedEvents((prev) =>
-        [...prev, ev].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-      );
-    } else {
-      setEvents((prev) =>
-        [...prev, ev].sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-      );
-    }
-  }
-
-  function handleUpdated(ev: CalendarEvent) {
-    const update = (prev: CalendarEvent[]) =>
-      prev.map((e) => (e.id === ev.id ? ev : e))
-        .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-    setEvents(update);
-    setDisplayedEvents(update);
-  }
-
-  function handleDeleted(id: string) {
-    setEvents((prev) => prev.filter((e) => e.id !== id));
-    setDisplayedEvents((prev) => prev.filter((e) => e.id !== id));
-  }
-
-  if (loading || !user) {
+  if (userLoading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center text-sm text-zinc-400">
-        {t.loading}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-zinc-500 text-sm">Cargando…</div>
       </div>
     );
   }
 
-  const activeGroupId = selection.kind === "group" ? selection.id : null;
-
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar
-        selection={selection}
-        onSelect={setSelection}
-        userName={user.name}
-        userAvatar={user.avatar}
-        userEmail={user.email}
-        friends={friends}
-        groups={groups}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+      <NavBar
+        username={user.profile.username}
+        fullName={user.profile.full_name}
+        avatarUrl={user.profile.avatar_url}
+        onSignOut={signOut}
       />
-      <CalendarArea
-        selection={selection}
-        events={displayedEvents}
-        onNewEvent={openCreate}
-        onEventClick={openEdit}
-        notifications={notifications}
-        onRespondNotification={handleRespondNotification}
-        onMarkNotificationsRead={handleMarkNotificationsRead}
-        friendPermission={friendPermission}
-        onRequestAccess={handleRequestAccess}
-        requestingAccess={requestingAccess}
-        groupMembers={groupMembers}
-      />
-      <EventModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        userId={user.id}
-        event={editingEvent}
-        groupId={activeGroupId}
-        onCreated={handleCreated}
-        onUpdated={handleUpdated}
-        onDeleted={handleDeleted}
-      />
+
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        <h1 className="text-lg font-semibold text-zinc-900">Eventos</h1>
+
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar eventos…"
+        />
+
+        <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1">
+          <button
+            onClick={() => setFilter("public")}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              filter === "public" ? "bg-violet-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <Globe className="h-4 w-4" /> Públicos ({publicItems.length})
+          </button>
+          <button
+            onClick={() => setFilter("private")}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+              filter === "private" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <Lock className="h-4 w-4" /> Privados ({privateItems.length})
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="text-sm text-zinc-500 text-center py-8">Cargando…</div>
+        ) : items.length === 0 ? (
+          <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200">
+            {query.trim() ? (
+              "Sin resultados para tu búsqueda."
+            ) : filter === "public" ? (
+              followingCount === 0 ? (
+                <>
+                  <p className="mb-1">No estás siguiendo a nadie todavía.</p>
+                  <p className="text-xs">Buscá perfiles y seguilos para ver sus eventos públicos.</p>
+                </>
+              ) : (
+                "Las personas que seguís no publicaron eventos todavía."
+              )
+            ) : (
+              "No te invitaron a ningún evento privado todavía."
+            )}
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {items.map((ev) => (
+              <li key={ev.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+                {ev.image_url && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={ev.image_url}
+                    alt={ev.title}
+                    className="w-full h-48 object-cover"
+                  />
+                )}
+                <div className="flex items-start gap-3 p-4">
+                  <Link href={`/u/${ev.creator.username}`}>
+                    <Avatar src={ev.creator.avatar_url} name={ev.creator.full_name} size="md" />
+                  </Link>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-1.5">
+                      <Link
+                        href={`/u/${ev.creator.username}`}
+                        className="font-medium text-zinc-900 hover:underline truncate"
+                      >
+                        {ev.creator.full_name ?? ev.creator.username}
+                      </Link>
+                      <span className="text-xs text-zinc-400">@{ev.creator.username}</span>
+                    </div>
+                    <h3 className="font-medium text-zinc-900 mt-1.5">{ev.title}</h3>
+                    <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+                      <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
+                    </p>
+                    {ev.location && <p className="text-xs text-zinc-500 mt-0.5">📍 {ev.location}</p>}
+                    {ev.description && (
+                      <p className="text-sm text-zinc-700 mt-2 whitespace-pre-line">
+                        {ev.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
+
+      <Toast state={toast.state} />
     </div>
   );
 }

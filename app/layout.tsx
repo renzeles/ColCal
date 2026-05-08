@@ -1,10 +1,15 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { LanguageProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "Colcal — Calendario colaborativo",
-  description: "Tu calendario, compartido con quien quieras.",
+  title: "Enviar Eventos",
+  description: "Crea y envía eventos directamente a Google Calendar.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#ffffff",
 };
 
 export default function RootLayout({
@@ -12,9 +17,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es" className="h-full antialiased">
-      <body className="min-h-full bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100">
-        <LanguageProvider>{children}</LanguageProvider>
-      </body>
+      <body className="min-h-full bg-zinc-50 text-zinc-900">{children}</body>
     </html>
   );
 }
