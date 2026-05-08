@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, Globe, Lock } from "lucide-react";
+import { Calendar, Globe, Lock, User as UserIcon } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
@@ -10,10 +10,12 @@ import { Avatar } from "@/components/Avatar";
 import { SearchBar } from "@/components/SearchBar";
 import { Toast, useToast } from "@/components/Toast";
 import { Landing } from "@/components/Landing";
+import { FeedSkeleton } from "@/components/Skeleton";
+import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 
 type FeedItem = SentEvent & { creator: Profile };
-type Filter = "public" | "private";
+type Filter = "public" | "private" | "mine";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("es-AR", {
@@ -30,6 +32,7 @@ export default function HomePage() {
   const toast = useToast();
   const [publicItems, setPublicItems] = useState<FeedItem[]>([]);
   const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
+  const [mineItems, setMineItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [followingCount, setFollowingCount] = useState(0);
   const [filter, setFilter] = useState<Filter>("public");
@@ -72,15 +75,25 @@ export default function HomePage() {
               .limit(100)
           : null;
 
-      const [publicRes, privateRes] = await Promise.all([
+      // My own events
+      const mineQuery = supabase
+        .from("sent_events")
+        .select("*")
+        .eq("creator_id", user.id)
+        .order("start_at", { ascending: false })
+        .limit(100);
+
+      const [publicRes, privateRes, mineRes] = await Promise.all([
         publicQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
         privateQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
+        mineQuery,
       ]);
 
       const allCreatorIds = Array.from(
         new Set([
           ...((publicRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
           ...((privateRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
+          ...((mineRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
         ])
       );
 
@@ -105,12 +118,14 @@ export default function HomePage() {
 
       setPublicItems(withCreator((publicRes.data ?? []) as SentEvent[]));
       setPrivateItems(withCreator((privateRes.data ?? []) as SentEvent[]));
+      setMineItems(withCreator((mineRes.data ?? []) as SentEvent[]));
       setLoading(false);
     })();
   }, [user]);
 
   const items = useMemo(() => {
-    const base = filter === "public" ? publicItems : privateItems;
+    const base =
+      filter === "public" ? publicItems : filter === "private" ? privateItems : mineItems;
     const q = query.trim().toLowerCase();
     if (!q) return base;
     return base.filter(
@@ -121,7 +136,7 @@ export default function HomePage() {
         (ev.creator.username ?? "").toLowerCase().includes(q) ||
         (ev.creator.full_name ?? "").toLowerCase().includes(q)
     );
-  }, [filter, publicItems, privateItems, query]);
+  }, [filter, publicItems, privateItems, mineItems, query]);
 
   if (userLoading) {
     return (
@@ -153,10 +168,10 @@ export default function HomePage() {
           placeholder="Buscar eventos…"
         />
 
-        <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1">
+        <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1 overflow-x-auto">
           <button
             onClick={() => setFilter("public")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+            className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               filter === "public" ? "bg-violet-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
@@ -164,18 +179,26 @@ export default function HomePage() {
           </button>
           <button
             onClick={() => setFilter("private")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition ${
+            className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
               filter === "private" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
             <Lock className="h-4 w-4" /> Privados ({privateItems.length})
           </button>
+          <button
+            onClick={() => setFilter("mine")}
+            className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap ${
+              filter === "mine" ? "bg-blue-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            <UserIcon className="h-4 w-4" /> Míos ({mineItems.length})
+          </button>
         </div>
 
         {loading ? (
-          <div className="text-sm text-zinc-500 text-center py-8">Cargando…</div>
+          <FeedSkeleton />
         ) : items.length === 0 ? (
-          <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200">
+          <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200 shadow-sm">
             {query.trim() ? (
               "Sin resultados para tu búsqueda."
             ) : filter === "public" ? (
@@ -187,14 +210,23 @@ export default function HomePage() {
               ) : (
                 "Las personas que seguís no publicaron eventos todavía."
               )
-            ) : (
+            ) : filter === "private" ? (
               "No te invitaron a ningún evento privado todavía."
+            ) : (
+              <>
+                <p className="mb-1">Todavía no creaste ningún evento.</p>
+                <Link href="/create" className="text-xs text-blue-600 hover:underline">
+                  Creá tu primer evento →
+                </Link>
+              </>
             )}
           </div>
         ) : (
           <ul className="space-y-3">
-            {items.map((ev) => (
-              <li key={ev.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 transition">
+            {items.map((ev) => {
+              const evStyles = getEventColorStyles(ev.color);
+              return (
+              <li key={ev.id} className={`rounded-2xl border overflow-hidden hover:shadow-md transition shadow-sm ${evStyles.card} ${evStyles.border}`}>
                 {ev.image_url && (
                   <Link href={`/u/${ev.creator.username}/e/${ev.id}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -237,7 +269,8 @@ export default function HomePage() {
                   </div>
                 </div>
               </li>
-            ))}
+            );
+          })}
           </ul>
         )}
       </main>

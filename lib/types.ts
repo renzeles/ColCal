@@ -11,6 +11,16 @@ export type CalendarProvider = "google" | "microsoft";
 
 export type EventVisibility = "public" | "private";
 
+export type EventColor =
+  | "zinc"
+  | "red"
+  | "orange"
+  | "amber"
+  | "emerald"
+  | "sky"
+  | "violet"
+  | "pink";
+
 export type SentEvent = {
   id: string;
   creator_id: string;
@@ -24,6 +34,7 @@ export type SentEvent = {
   provider_event_id: string | null;
   visibility: EventVisibility;
   image_url: string | null;
+  color: EventColor;
   created_at: string;
 };
 

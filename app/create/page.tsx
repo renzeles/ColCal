@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, Globe, Lock, ImagePlus, X } from "lucide-react";
+import { Pencil, Trash2, Globe, Lock, ImagePlus, X, Calendar, MapPin, Check } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createGCalEvent, updateGCalEvent, deleteGCalEvent } from "@/lib/google-calendar";
 import { createMSEvent, updateMSEvent, deleteMSEvent } from "@/lib/microsoft-calendar";
@@ -9,7 +9,8 @@ import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
 import { SearchBar } from "@/components/SearchBar";
 import { Toast, useToast } from "@/components/Toast";
-import type { CalendarProvider, EventVisibility, SentEvent } from "@/lib/types";
+import { EVENT_COLORS, EVENT_COLOR_LABEL, getEventColorStyles } from "@/lib/event-colors";
+import type { CalendarProvider, EventColor, EventVisibility, SentEvent } from "@/lib/types";
 
 const PROVIDER_LABEL: Record<CalendarProvider, string> = {
   google: "Google Calendar",
@@ -58,6 +59,7 @@ export default function CreatePage() {
   const [query, setQuery] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [color, setColor] = useState<EventColor>("zinc");
 
   const formRef = useRef<HTMLFormElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +132,7 @@ export default function CreatePage() {
     setDescription("");
     setImageFile(null);
     setImageUrl(null);
+    setColor("zinc");
     if (imageInputRef.current) imageInputRef.current.value = "";
   }
 
@@ -144,6 +147,7 @@ export default function CreatePage() {
     setDescription(ev.description ?? "");
     setImageFile(null);
     setImageUrl(ev.image_url);
+    setColor(ev.color ?? "zinc");
     if (imageInputRef.current) imageInputRef.current.value = "";
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -270,6 +274,7 @@ export default function CreatePage() {
             description: description || null,
             attendee_emails: attendeeEmails,
             image_url: finalImageUrl,
+            color,
           })
           .eq("id", editingId)
           .select()
@@ -301,6 +306,7 @@ export default function CreatePage() {
             provider: user.provider ?? "google",
             provider_event_id: providerEventId,
             image_url: finalImageUrl,
+            color,
           })
           .select()
           .single();
@@ -531,6 +537,74 @@ export default function CreatePage() {
               </button>
             )}
 
+            <div>
+              <label className="block text-xs text-zinc-500 mb-2">Color del evento</label>
+              <div className="flex flex-wrap gap-2">
+                {EVENT_COLORS.map((c) => {
+                  const styles = getEventColorStyles(c);
+                  const active = color === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setColor(c)}
+                      title={EVENT_COLOR_LABEL[c]}
+                      aria-label={EVENT_COLOR_LABEL[c]}
+                      className={`h-8 w-8 rounded-full ${styles.dot} flex items-center justify-center transition ring-offset-2 ${
+                        active ? `ring-2 ${styles.ring}` : "hover:scale-110"
+                      }`}
+                    >
+                      {active && <Check className="h-4 w-4 text-white" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Live preview */}
+            {(title || imagePreview || startAt) && (
+              <div className="pt-2">
+                <p className="text-xs text-zinc-500 mb-2">Vista previa</p>
+                <div
+                  className={`rounded-2xl border overflow-hidden ${
+                    getEventColorStyles(color).card
+                  } ${getEventColorStyles(color).border}`}
+                >
+                  {imagePreview && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={imagePreview}
+                      alt={title || "Preview"}
+                      className="w-full h-32 object-cover"
+                    />
+                  )}
+                  <div className="p-4">
+                    <h3 className="font-semibold text-zinc-900 truncate">
+                      {title || "Título del evento"}
+                    </h3>
+                    {startAt && (
+                      <p className="text-xs text-zinc-600 mt-1 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(startAt).toLocaleString("es-AR", {
+                          weekday: "short",
+                          day: "numeric",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                    )}
+                    {location && (
+                      <p className="text-xs text-zinc-600 mt-0.5 flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {location}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={submitting || (calendarRequired && needsCalendarConnect)}
@@ -577,11 +651,13 @@ export default function CreatePage() {
             }
             return (
               <ul className="space-y-2">
-                {filtered.map((ev) => (
+                {filtered.map((ev) => {
+                  const evStyles = getEventColorStyles(ev.color);
+                  return (
                 <li
                   key={ev.id}
-                  className={`bg-white rounded-xl border overflow-hidden transition ${
-                    editingId === ev.id ? "border-blue-400 ring-2 ring-blue-100" : "border-zinc-200"
+                  className={`rounded-2xl border overflow-hidden shadow-sm transition ${evStyles.card} ${
+                    editingId === ev.id ? "border-blue-400 ring-2 ring-blue-100" : evStyles.border
                   }`}
                 >
                   {ev.image_url && (
@@ -642,7 +718,8 @@ export default function CreatePage() {
                     </div>
                   </div>
                 </li>
-              ))}
+                  );
+                })}
               </ul>
             );
           })()}

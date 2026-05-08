@@ -9,6 +9,7 @@ import { NavBar } from "@/components/NavBar";
 import { Avatar } from "@/components/Avatar";
 import { SearchBar } from "@/components/SearchBar";
 import { Toast, useToast } from "@/components/Toast";
+import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 
 function formatDate(iso: string) {
@@ -297,10 +298,12 @@ export function ProfileClient({ username, initialProfile }: Props) {
             }
             return (
               <ul className="space-y-2">
-                {filtered.map((ev) => (
+                {filtered.map((ev) => {
+                  const evStyles = getEventColorStyles(ev.color);
+                  return (
                   <li
                     key={ev.id}
-                    className="bg-white rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 transition"
+                    className={`rounded-2xl border overflow-hidden hover:shadow-md transition shadow-sm ${evStyles.card} ${evStyles.border}`}
                   >
                     <Link href={`/u/${profile.username}/e/${ev.id}`} className="block">
                       {ev.image_url && (
@@ -339,7 +342,8 @@ export function ProfileClient({ username, initialProfile }: Props) {
                       </div>
                     </Link>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             );
           })()}

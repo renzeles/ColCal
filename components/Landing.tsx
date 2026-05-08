@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Calendar, Globe, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
+import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 
 type FeedItem = SentEvent & { creator: Profile };
@@ -82,8 +83,10 @@ export function Landing() {
               </h3>
             </div>
             <ul className="grid sm:grid-cols-2 gap-3">
-              {items.map((ev) => (
-                <li key={ev.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+              {items.map((ev) => {
+                const evStyles = getEventColorStyles(ev.color);
+                return (
+                <li key={ev.id} className={`rounded-2xl border overflow-hidden shadow-sm ${evStyles.card} ${evStyles.border}`}>
                   <Link href={`/u/${ev.creator.username}/e/${ev.id}`}>
                     {ev.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -106,7 +109,8 @@ export function Landing() {
                     </div>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         )}
