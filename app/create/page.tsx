@@ -130,10 +130,46 @@ export default function CreatePage() {
 
       setEventsLoading(false);
 
-      if (user.provider && new URLSearchParams(window.location.search).get("connected") === "1") {
+      const params = new URLSearchParams(window.location.search);
+
+      if (user.provider && params.get("connected") === "1") {
         localStorage.setItem(`cal_connected_${user.provider}`, "true");
         setCalendarConnected(true);
         window.history.replaceState({}, "", "/create");
+      }
+
+      // Auto-open edit form when navigated with ?edit=ID
+      const editId = params.get("edit");
+      if (editId) {
+        const evToEdit = ((eventsRes.data ?? []) as SentEvent[]).find((e) => e.id === editId);
+        if (evToEdit) {
+          const byEmail = new Map(
+            ((followingRes.data ?? []) as { following_id: string }[]).map(() => ["", undefined as unknown as Profile])
+          );
+          // Use profiles loaded above for the chip lookup
+          const loadedProfiles: Profile[] = [];
+          const followedIds2 = (followingRes.data ?? []).map((r) => r.following_id);
+          if (followedIds2.length > 0) {
+            const { data: profs } = await supabase
+              .from("profiles")
+              .select("*")
+              .in("id", followedIds2);
+            (profs ?? []).forEach((p) => loadedProfiles.push(p as Profile));
+          }
+          const emailMap = new Map(loadedProfiles.filter((p) => p.email).map((p) => [p.email!, p]));
+          setEditingId(evToEdit.id);
+          setTitle(evToEdit.title);
+          setVisibility(evToEdit.visibility);
+          setStartAt(toLocalInput(evToEdit.start_at));
+          setEndAt(toLocalInput(evToEdit.end_at));
+          setAttendees(evToEdit.attendee_emails.map((email) => ({ email, profile: emailMap.get(email) })));
+          setLocation(evToEdit.location ?? "");
+          setDescription(evToEdit.description ?? "");
+          setImageUrl(evToEdit.image_url);
+          setColor(evToEdit.color ?? "zinc");
+          window.history.replaceState({}, "", "/create");
+          setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+        }
       }
     })();
   }, [user]);

@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Calendar, MapPin, Share2, Check, ExternalLink } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Calendar, MapPin, Share2, Check, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
 import { Avatar } from "@/components/Avatar";
+import { Toast, useToast } from "@/components/Toast";
 import type { Profile, SentEvent } from "@/lib/types";
 
 function formatDateLong(iso: string) {
@@ -39,7 +42,24 @@ type Props = {
 
 export function EventClient({ event, creator }: Props) {
   const { user, signOut } = useUser(false);
+  const router = useRouter();
+  const toast = useToast();
   const [shareCopied, setShareCopied] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (deleting || !confirm(`¿Borrar "${event.title}"?`)) return;
+    setDeleting(true);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("sent_events").delete().eq("id", event.id);
+      if (error) throw error;
+      router.push(`/u/${creator.username}`);
+    } catch {
+      toast.show("error", "No se pudo borrar el evento.");
+      setDeleting(false);
+    }
+  }
 
   async function handleShare() {
     const url = typeof window !== "undefined" ? window.location.href : "";
@@ -98,10 +118,31 @@ export function EventClient({ event, creator }: Props) {
           )}
 
           <div className="p-5 sm:p-6 space-y-4">
-            <div>
+            <div className="flex items-start justify-between gap-3">
               <h1 className="text-2xl sm:text-3xl font-bold text-zinc-900 tracking-tight">
                 {event.title}
               </h1>
+              {user?.id === creator.id && (
+                <div className="flex items-center gap-1 shrink-0 mt-1">
+                  <Link
+                    href={`/create?edit=${event.id}`}
+                    className="h-9 w-9 flex items-center justify-center rounded-full text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 transition"
+                    aria-label="Editar"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Link>
+                  <button
+                    onClick={handleDelete}
+                    disabled={deleting}
+                    className="h-9 w-9 flex items-center justify-center rounded-full text-red-500 hover:bg-red-50 transition disabled:opacity-50"
+                    aria-label="Borrar"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div>
               <div className="mt-3 flex flex-col gap-1.5 text-sm text-zinc-600">
                 <span className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-zinc-400" />
@@ -179,6 +220,8 @@ export function EventClient({ event, creator }: Props) {
           </section>
         )}
       </main>
+
+      <Toast state={toast.state} />
     </div>
   );
 }

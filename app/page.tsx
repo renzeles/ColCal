@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Calendar, Check, Globe, Lock, User as UserIcon, UserPlus, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Calendar, Check, Globe, Lock, Pencil, Trash2, User as UserIcon, UserPlus, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
@@ -31,6 +32,8 @@ function formatDate(iso: string) {
 export default function HomePage() {
   const { user, loading: userLoading, signOut } = useUser(false);
   const toast = useToast();
+  const router = useRouter();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [publicItems, setPublicItems] = useState<FeedItem[]>([]);
   const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
   const [mineItems, setMineItems] = useState<FeedItem[]>([]);
@@ -202,6 +205,21 @@ export default function HomePage() {
     }
   }
 
+  async function deleteMineEvent(evId: string, title: string) {
+    if (deletingId || !confirm(`¿Borrar "${title}"?`)) return;
+    setDeletingId(evId);
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.from("sent_events").delete().eq("id", evId);
+      if (error) throw error;
+      setMineItems((prev) => prev.filter((e) => e.id !== evId));
+    } catch {
+      toast.show("error", "No se pudo borrar el evento.");
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const items = useMemo(() => {
     const base =
       filter === "public" ? publicItems : filter === "private" ? privateItems : mineItems;
@@ -345,12 +363,31 @@ export default function HomePage() {
                             Seguir
                           </button>
                         )}
-                        {/* RSVP count badge on Míos cards */}
-                        {filter === "mine" && acceptedCount > 0 && (
-                          <span className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                            <Check className="h-3 w-3" />
-                            {acceptedCount} {acceptedCount === 1 ? "confirmó" : "confirmaron"}
-                          </span>
+                        {/* RSVP count badge + edit/delete on Míos cards */}
+                        {filter === "mine" && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            {acceptedCount > 0 && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                                <Check className="h-3 w-3" />
+                                {acceptedCount} {acceptedCount === 1 ? "confirmó" : "confirmaron"}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => router.push(`/create?edit=${ev.id}`)}
+                              aria-label="Editar"
+                              className="h-7 w-7 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteMineEvent(ev.id, ev.title)}
+                              disabled={deletingId === ev.id}
+                              aria-label="Borrar"
+                              className="h-7 w-7 flex items-center justify-center rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         )}
                       </div>
                       <Link
