@@ -9,6 +9,7 @@ import { NavBar } from "@/components/NavBar";
 import { Avatar } from "@/components/Avatar";
 import { SearchBar } from "@/components/SearchBar";
 import { Toast, useToast } from "@/components/Toast";
+import { Landing } from "@/components/Landing";
 import type { Profile, SentEvent } from "@/lib/types";
 
 type FeedItem = SentEvent & { creator: Profile };
@@ -25,7 +26,7 @@ function formatDate(iso: string) {
 }
 
 export default function HomePage() {
-  const { user, loading: userLoading, signOut } = useUser();
+  const { user, loading: userLoading, signOut } = useUser(false);
   const toast = useToast();
   const [publicItems, setPublicItems] = useState<FeedItem[]>([]);
   const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
@@ -122,12 +123,16 @@ export default function HomePage() {
     );
   }, [filter, publicItems, privateItems, query]);
 
-  if (userLoading || !user) {
+  if (userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-zinc-500 text-sm">Cargando…</div>
       </div>
     );
+  }
+
+  if (!user) {
+    return <Landing />;
   }
 
   return (
@@ -189,14 +194,16 @@ export default function HomePage() {
         ) : (
           <ul className="space-y-3">
             {items.map((ev) => (
-              <li key={ev.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+              <li key={ev.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden hover:border-zinc-300 transition">
                 {ev.image_url && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={ev.image_url}
-                    alt={ev.title}
-                    className="w-full h-48 object-cover"
-                  />
+                  <Link href={`/u/${ev.creator.username}/e/${ev.id}`}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={ev.image_url}
+                      alt={ev.title}
+                      className="w-full h-48 object-cover"
+                    />
+                  </Link>
                 )}
                 <div className="flex items-start gap-3 p-4">
                   <Link href={`/u/${ev.creator.username}`}>
@@ -212,13 +219,18 @@ export default function HomePage() {
                       </Link>
                       <span className="text-xs text-zinc-400">@{ev.creator.username}</span>
                     </div>
-                    <h3 className="font-medium text-zinc-900 mt-1.5">{ev.title}</h3>
+                    <Link
+                      href={`/u/${ev.creator.username}/e/${ev.id}`}
+                      className="block hover:underline"
+                    >
+                      <h3 className="font-medium text-zinc-900 mt-1.5">{ev.title}</h3>
+                    </Link>
                     <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
                       <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
                     </p>
                     {ev.location && <p className="text-xs text-zinc-500 mt-0.5">📍 {ev.location}</p>}
                     {ev.description && (
-                      <p className="text-sm text-zinc-700 mt-2 whitespace-pre-line">
+                      <p className="text-sm text-zinc-700 mt-2 whitespace-pre-line line-clamp-3">
                         {ev.description}
                       </p>
                     )}

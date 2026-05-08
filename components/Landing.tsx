@@ -1,0 +1,165 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Calendar, Globe, Sparkles, ArrowRight } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { Avatar } from "@/components/Avatar";
+import type { Profile, SentEvent } from "@/lib/types";
+
+type FeedItem = SentEvent & { creator: Profile };
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleString("es-AR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+export function Landing() {
+  const [items, setItems] = useState<FeedItem[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const { data: events } = await supabase
+        .from("sent_events")
+        .select("*")
+        .eq("visibility", "public")
+        .gte("start_at", new Date().toISOString())
+        .order("start_at", { ascending: true })
+        .limit(6);
+
+      const ids = Array.from(new Set((events ?? []).map((e) => e.creator_id)));
+      if (ids.length === 0) {
+        setItems([]);
+        return;
+      }
+      const { data: profiles } = await supabase.from("profiles").select("*").in("id", ids);
+      const profileMap = new Map<string, Profile>();
+      (profiles ?? []).forEach((p) => profileMap.set(p.id, p as Profile));
+
+      setItems(
+        (events ?? [])
+          .map((e) => {
+            const creator = profileMap.get(e.creator_id);
+            return creator ? ({ ...(e as SentEvent), creator } as FeedItem) : null;
+          })
+          .filter((x): x is FeedItem => x !== null)
+      );
+    })();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+      <header className="border-b border-zinc-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
+          <h1 className="text-lg font-bold text-zinc-900">Agenddi</h1>
+          <Link
+            href="/login"
+            className="px-4 h-9 rounded-full bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition flex items-center"
+          >
+            Iniciar sesión
+          </Link>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-10 sm:py-16 space-y-12">
+        <section className="text-center space-y-4">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">
+            <Sparkles className="h-3.5 w-3.5" /> Tu agenda compartida
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-bold text-zinc-900 tracking-tight">
+            Crea, compartí y descubrí eventos
+          </h2>
+          <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto">
+            Mandá invitaciones a Google Calendar u Outlook, publicá eventos en tu perfil y seguí a
+            quien quieras.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-1.5 px-5 h-11 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
+            >
+              Empezar gratis <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+
+        {items.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-zinc-900 flex items-center gap-1.5">
+                <Globe className="h-4 w-4 text-violet-600" /> Eventos públicos
+              </h3>
+            </div>
+            <ul className="grid sm:grid-cols-2 gap-3">
+              {items.map((ev) => (
+                <li key={ev.id} className="bg-white rounded-xl border border-zinc-200 overflow-hidden">
+                  <Link href={`/u/${ev.creator.username}/e/${ev.id}`}>
+                    {ev.image_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={ev.image_url} alt={ev.title} className="w-full h-32 object-cover" />
+                    )}
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Avatar src={ev.creator.avatar_url} name={ev.creator.full_name} size="sm" />
+                        <span className="text-xs text-zinc-500 truncate">
+                          @{ev.creator.username}
+                        </span>
+                      </div>
+                      <h4 className="font-medium text-zinc-900 truncate">{ev.title}</h4>
+                      <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
+                      </p>
+                      {ev.location && (
+                        <p className="text-xs text-zinc-500 mt-0.5 truncate">📍 {ev.location}</p>
+                      )}
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section className="grid sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-zinc-200 p-5">
+            <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
+              <Calendar className="h-5 w-5" />
+            </div>
+            <h4 className="font-semibold text-zinc-900 mb-1">Sincronizá calendarios</h4>
+            <p className="text-sm text-zinc-600">
+              Conectá Google o Outlook y mandá invitaciones que se agregan al calendario del invitado.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-zinc-200 p-5">
+            <div className="h-9 w-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center mb-3">
+              <Globe className="h-5 w-5" />
+            </div>
+            <h4 className="font-semibold text-zinc-900 mb-1">Publicá en tu perfil</h4>
+            <p className="text-sm text-zinc-600">
+              Compartí eventos públicos con un link y dejá que cualquiera los vea sin registrarse.
+            </p>
+          </div>
+          <div className="bg-white rounded-xl border border-zinc-200 p-5">
+            <div className="h-9 w-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <h4 className="font-semibold text-zinc-900 mb-1">Descubrí gente</h4>
+            <p className="text-sm text-zinc-600">
+              Seguí a quien quieras y vas a ver sus próximos eventos en tu feed personal.
+            </p>
+          </div>
+        </section>
+
+        <footer className="text-center text-xs text-zinc-400 pt-8">
+          Agenddi · {new Date().getFullYear()}
+        </footer>
+      </main>
+    </div>
+  );
+}

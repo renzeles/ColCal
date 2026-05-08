@@ -36,17 +36,22 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const isAuthRoute =
-    request.nextUrl.pathname.startsWith("/login") ||
-    request.nextUrl.pathname.startsWith("/auth");
+  const path = request.nextUrl.pathname;
 
-  if (!user && !isAuthRoute) {
+  // Public routes accessible without auth
+  const isPublicRoute =
+    path.startsWith("/login") ||
+    path.startsWith("/auth") ||
+    path.startsWith("/u/") ||
+    path === "/"; // landing handles its own auth-aware rendering
+
+  if (!user && !isPublicRoute) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/login";
     return NextResponse.redirect(redirectUrl);
   }
 
-  if (user && request.nextUrl.pathname === "/login") {
+  if (user && path === "/login") {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = "/";
     return NextResponse.redirect(redirectUrl);
