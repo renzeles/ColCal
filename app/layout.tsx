@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Enviar Eventos",
-  description: "Crea y envía eventos directamente a Google Calendar.",
+  title: "Agendi",
+  description: "Crea y envía eventos directamente a Google Calendar u Outlook.",
 };
 
 export const viewport: Viewport = {
