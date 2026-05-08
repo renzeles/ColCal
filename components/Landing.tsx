@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Globe, Sparkles, ArrowRight } from "lucide-react";
+import { Calendar, Globe, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import type { Profile, SentEvent } from "@/lib/types";
@@ -68,25 +68,10 @@ export function Landing() {
       </header>
 
       <main className="max-w-3xl mx-auto px-4 py-10 sm:py-16 space-y-12">
-        <section className="text-center space-y-4">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-100 text-violet-700 text-xs font-semibold">
-            <Sparkles className="h-3.5 w-3.5" /> Tu agenda compartida
-          </div>
+        <section className="text-center">
           <h2 className="text-3xl sm:text-5xl font-bold text-zinc-900 tracking-tight">
-            Crea, compartí y descubrí eventos
+            Descubrí eventos
           </h2>
-          <p className="text-base sm:text-lg text-zinc-600 max-w-xl mx-auto">
-            Mandá invitaciones a Google Calendar u Outlook, publicá eventos en tu perfil y seguí a
-            quien quieras.
-          </p>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-1.5 px-5 h-11 rounded-full bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition"
-            >
-              Empezar gratis <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
         </section>
 
         {items.length > 0 && (
