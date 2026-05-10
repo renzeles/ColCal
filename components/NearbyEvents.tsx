@@ -1,434 +1,277 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { MapPin, Navigation, Search, X, AlertCircle, ChevronRight } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
-import { calculateDistanceKm } from "@/lib/geo";
-import { Skeleton } from "@/components/Skeleton";
-import { getEventColorStyles } from "@/lib/event-colors";
-import type { Profile, SentEvent } from "@/lib/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Share2 } from "lucide-react";
 
-type BaseEvent = SentEvent & { creator: Profile };
-type GeoEvent = BaseEvent & { distanceKm: number };
+type DemoEvent = {
+  id: string;
+  title: string;
+  venue: string;
+  location: string;
+  dateLabel: string;
+  image: string;
+  startISO: string;
+  endISO: string;
+  spots: number;
+};
 
-type State =
-  | { kind: "idle" }
-  | { kind: "requesting" }
-  | { kind: "loading" }
-  | { kind: "success"; lat: number; lng: number }
-  | { kind: "denied" }
-  | { kind: "error" }
-  | { kind: "manual" };
+const EVENTS: DemoEvent[] = [
+  {
+    id: "1",
+    title: "Chef en Vivo",
+    venue: "La Parrilla del Puerto",
+    location: "Puerto Madero, CABA",
+    dateLabel: "Sáb 16 may · 21:00 hs",
+    spots: 12,
+    startISO: "2026-05-16T21:00:00",
+    endISO: "2026-05-16T23:30:00",
+    image:
+      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=600&h=340",
+  },
+  {
+    id: "2",
+    title: "Rolling Stones Tribute",
+    venue: "Bar Hood",
+    location: "Palermo, CABA",
+    dateLabel: "Dom 17 may · 22:00 hs",
+    spots: 5,
+    startISO: "2026-05-17T22:00:00",
+    endISO: "2026-05-18T01:00:00",
+    image:
+      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=600&h=340",
+  },
+  {
+    id: "3",
+    title: "Noche de Jazz",
+    venue: "Club del Vino",
+    location: "Chacarita, CABA",
+    dateLabel: "Jue 21 may · 20:30 hs",
+    spots: 20,
+    startISO: "2026-05-21T20:30:00",
+    endISO: "2026-05-21T23:00:00",
+    image:
+      "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=600&h=340",
+  },
+  {
+    id: "4",
+    title: "Mercado de Arte",
+    venue: "Plaza Serrano",
+    location: "Palermo, CABA",
+    dateLabel: "Sáb 23 may · 11:00 hs",
+    spots: 80,
+    startISO: "2026-05-23T11:00:00",
+    endISO: "2026-05-23T19:00:00",
+    image:
+      "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=600&h=340",
+  },
+  {
+    id: "5",
+    title: "Stand Up Comedy",
+    venue: "El Cotorro",
+    location: "San Telmo, CABA",
+    dateLabel: "Vie 29 may · 21:30 hs",
+    spots: 3,
+    startISO: "2026-05-29T21:30:00",
+    endISO: "2026-05-29T23:30:00",
+    image:
+      "https://images.unsplash.com/photo-1527224857830-43a7acc85260?auto=format&fit=crop&w=600&h=340",
+  },
+  {
+    id: "6",
+    title: "Cócteles con Historia",
+    venue: "Bar Constitución",
+    location: "Constitución, CABA",
+    dateLabel: "Mié 27 may · 20:00 hs",
+    spots: 18,
+    startISO: "2026-05-27T20:00:00",
+    endISO: "2026-05-27T23:00:00",
+    image:
+      "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&h=340",
+  },
+];
 
-const RADII = [2, 5, 10, 25] as const;
-type Radius = (typeof RADII)[number];
-
-function fmtDate(iso: string) {
-  const d = new Date(iso);
-  return {
-    date: d.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" }),
-    time: d.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }),
-  };
-}
-
-async function loadGeoEvents(): Promise<BaseEvent[]> {
-  const supabase = createClient();
-  const { data: evs } = await supabase
-    .from("sent_events")
-    .select("*")
-    .eq("visibility", "public")
-    .eq("is_online", false)
-    .not("latitude", "is", null)
-    .not("longitude", "is", null)
-    .gte("start_at", new Date().toISOString())
-    .order("start_at", { ascending: true })
-    .limit(300);
-
-  if (!evs?.length) return [];
-
-  const ids = [...new Set((evs as SentEvent[]).map((e) => e.creator_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, username, full_name, avatar_url")
-    .in("id", ids);
-
-  const pm = new Map<string, Profile>((profiles ?? []).map((p) => [p.id, p as Profile]));
-  return (evs as SentEvent[])
-    .map((e) => (pm.get(e.creator_id) ? { ...e, creator: pm.get(e.creator_id)! } : null))
-    .filter((e): e is BaseEvent => e !== null);
-}
-
-async function searchByCity(q: string): Promise<BaseEvent[]> {
-  if (!q.trim()) return [];
-  const supabase = createClient();
-  const { data: evs } = await supabase
-    .from("sent_events")
-    .select("*")
-    .eq("visibility", "public")
-    .eq("is_online", false)
-    .gte("start_at", new Date().toISOString())
-    .ilike("location", `%${q.trim()}%`)
-    .order("start_at", { ascending: true })
-    .limit(50);
-
-  if (!evs?.length) return [];
-
-  const ids = [...new Set((evs as SentEvent[]).map((e) => e.creator_id))];
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id, username, full_name, avatar_url")
-    .in("id", ids);
-
-  const pm = new Map<string, Profile>((profiles ?? []).map((p) => [p.id, p as Profile]));
-  return (evs as SentEvent[])
-    .map((e) => (pm.get(e.creator_id) ? { ...e, creator: pm.get(e.creator_id)! } : null))
-    .filter((e): e is BaseEvent => e !== null);
+function gCalLink(ev: DemoEvent) {
+  const fmt = (d: Date) =>
+    d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const url = new URL("https://calendar.google.com/calendar/render");
+  url.searchParams.set("action", "TEMPLATE");
+  url.searchParams.set("text", ev.title);
+  url.searchParams.set(
+    "dates",
+    `${fmt(new Date(ev.startISO))}/${fmt(new Date(ev.endISO))}`
+  );
+  url.searchParams.set("details", `${ev.venue} · ${ev.location}`);
+  url.searchParams.set("location", `${ev.venue}, ${ev.location}`);
+  return url.toString();
 }
 
 export function NearbyEvents() {
-  const [state, setState] = useState<State>({ kind: "idle" });
-  const [radius, setRadius] = useState<Radius>(10);
-  const [allGeo, setAllGeo] = useState<BaseEvent[]>([]);
-  const [manualQ, setManualQ] = useState("");
-  const [manualEvs, setManualEvs] = useState<BaseEvent[]>([]);
-  const [manualLoading, setManualLoading] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const n = EVENTS.length;
+  const [current, setCurrent] = useState(0);
+  const [copied, setCopied] = useState<string | null>(null);
+  const pauseRef = useRef(false);
 
-  async function useLocation() {
-    if (!navigator.geolocation) {
-      setState({ kind: "error" });
-      return;
-    }
-    setState({ kind: "requesting" });
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        setState({ kind: "loading" });
-        const evs = await loadGeoEvents();
-        setAllGeo(evs);
-        setState({ kind: "success", lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      (err) => setState({ kind: err.code === 1 ? "denied" : "error" }),
-      { timeout: 10000, maximumAge: 300_000 }
-    );
-  }
+  const advance = useCallback(() => {
+    if (!pauseRef.current) setCurrent((c) => (c + 1) % n);
+  }, [n]);
 
   useEffect(() => {
-    if (state.kind !== "manual") return;
-    if (timer.current) clearTimeout(timer.current);
-    if (!manualQ.trim()) { setManualEvs([]); setManualLoading(false); return; }
-    setManualLoading(true);
-    timer.current = setTimeout(async () => {
-      const res = await searchByCity(manualQ);
-      setManualEvs(res);
-      setManualLoading(false);
-    }, 380);
-    return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [manualQ, state.kind]);
+    const t = setInterval(advance, 4500);
+    return () => clearInterval(t);
+  }, [advance]);
 
-  const nearby = useMemo((): GeoEvent[] => {
-    if (state.kind !== "success") return [];
-    return allGeo
-      .filter((e) => e.capacity === null || e.capacity > 0)
-      .map((e) => ({
-        ...e,
-        distanceKm: calculateDistanceKm(state.lat, state.lng, e.latitude!, e.longitude!),
-      }))
-      .filter((e) => e.distanceKm <= radius)
-      .sort((a, b) => a.distanceKm - b.distanceKm || new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-  }, [state, allGeo, radius]);
-
-  function reset() {
-    setState({ kind: "idle" });
-    setManualQ("");
-    setManualEvs([]);
+  function go(dir: 1 | -1) {
+    setCurrent((c) => (c + dir + n) % n);
+    pauseRef.current = true;
+    setTimeout(() => { pauseRef.current = false; }, 6000);
   }
 
-  const isBlocked = state.kind === "denied" || state.kind === "error";
+  async function share(ev: DemoEvent) {
+    const text = `${ev.title} · ${ev.dateLabel} · ${ev.venue}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: ev.title, text }); return; } catch { /**/ }
+    }
+    await navigator.clipboard.writeText(text).catch(() => {});
+    setCopied(ev.id);
+    setTimeout(() => setCopied(null), 2000);
+  }
 
   return (
-    <section className="rounded-3xl bg-gradient-to-br from-violet-50 to-blue-50/60 border border-violet-100 p-6 sm:p-8">
+    <section className="bg-white rounded-3xl shadow-sm border border-zinc-100 p-6 sm:p-8">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-1">
-        <MapPin className="h-5 w-5 text-violet-600 shrink-0" />
-        <h3 className="text-lg font-bold text-zinc-900">Eventos cerca tuyo</h3>
+      <div className="flex items-center justify-between mb-5">
+        <div>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <MapPin className="h-3.5 w-3.5 text-violet-500" />
+            <span className="text-xs font-semibold text-violet-600 uppercase tracking-wide">
+              Cerca tuyo
+            </span>
+          </div>
+          <h3 className="text-xl font-bold text-zinc-900">Eventos cerca tuyo</h3>
+        </div>
+
+        {/* Arrows */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => go(-1)}
+            aria-label="Anterior"
+            className="text-zinc-300 hover:text-zinc-600 transition-colors"
+          >
+            <ChevronLeft className="h-7 w-7" />
+          </button>
+          <button
+            onClick={() => go(1)}
+            aria-label="Siguiente"
+            className="text-zinc-300 hover:text-zinc-600 transition-colors"
+          >
+            <ChevronRight className="h-7 w-7" />
+          </button>
+        </div>
       </div>
-      <p className="text-sm text-zinc-500 mb-6">
-        Encontrá eventos presenciales disponibles en tu zona.
-      </p>
 
-      {/* IDLE */}
-      {state.kind === "idle" && (
-        <div className="flex flex-col items-center text-center gap-4 py-4">
-          <button
-            onClick={useLocation}
-            className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-violet-600 text-white font-semibold text-base hover:bg-violet-700 active:scale-95 transition shadow-lg shadow-violet-200 w-full sm:w-auto justify-center"
-          >
-            <Navigation className="h-5 w-5" />
-            Usar mi ubicación
-          </button>
-          <p className="text-xs text-zinc-400 max-w-xs">
-            No guardamos tu ubicación exacta. Solo la usamos para mostrarte eventos cercanos.
-          </p>
-          <button
-            onClick={() => setState({ kind: "manual" })}
-            className="text-sm text-violet-600 hover:underline transition"
-          >
-            Elegí ciudad o barrio manualmente →
-          </button>
-        </div>
-      )}
-
-      {/* REQUESTING */}
-      {state.kind === "requesting" && (
-        <div className="flex flex-col items-center gap-3 py-6">
-          <div className="h-10 w-10 rounded-full border-2 border-violet-300 border-t-violet-600 animate-spin" />
-          <p className="text-sm text-zinc-500">Esperando permiso de ubicación…</p>
-          <p className="text-xs text-zinc-400">Aceptá el permiso en tu navegador para continuar.</p>
-        </div>
-      )}
-
-      {/* LOADING */}
-      {state.kind === "loading" && (
-        <div className="space-y-3">
-          <p className="text-sm text-zinc-500 mb-2">Buscando eventos cerca tuyo…</p>
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white rounded-2xl border border-zinc-200 p-4 space-y-2">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-3 w-1/2" />
-              <Skeleton className="h-3 w-1/3" />
-              <Skeleton className="h-3 w-1/4" />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* DENIED / ERROR */}
-      {isBlocked && (
-        <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex gap-3">
-            <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-zinc-800">
-                {state.kind === "denied"
-                  ? "No pudimos acceder a tu ubicación."
-                  : "Tu dispositivo no soporta geolocalización."}
-              </p>
-              <p className="text-xs text-zinc-500 mt-0.5">
-                Podés elegir una ciudad o barrio manualmente para ver eventos disponibles.
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setState({ kind: "manual" })}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-zinc-900 text-white font-semibold text-sm hover:bg-zinc-800 transition"
-          >
-            <Search className="h-4 w-4" />
-            Elegí ciudad o barrio
-          </button>
-        </div>
-      )}
-
-      {/* SUCCESS */}
-      {state.kind === "success" && (
-        <div className="space-y-4">
-          {/* Radius + reset */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-0.5">
-            <span className="text-xs text-zinc-500 shrink-0">Radio:</span>
-            {RADII.map((r) => (
-              <button
-                key={r}
-                onClick={() => setRadius(r)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold transition ${
-                  radius === r ? "bg-violet-600 text-white" : "bg-white text-zinc-600 hover:bg-zinc-100 border border-zinc-200"
-                }`}
+      {/* Carousel */}
+      <div className="relative overflow-hidden">
+        <div className="flex gap-3">
+          {[0, 1, 2, 3].map((offset) => {
+            const ev = EVENTS[(current + offset) % n];
+            return (
+              <div
+                key={`${current}-${offset}`}
+                className="shrink-0 w-[78%] sm:w-[45%] md:w-[30%]"
               >
-                {r} km
-              </button>
-            ))}
-            <button
-              onClick={reset}
-              className="shrink-0 ml-auto flex items-center gap-1 text-xs text-zinc-400 hover:text-zinc-600 transition"
-            >
-              <X className="h-3.5 w-3.5" /> Cambiar
-            </button>
-          </div>
-
-          {nearby.length === 0 ? (
-            <EmptyNearby
-              canExpand={radius < 25}
-              onExpand={() => setRadius(RADII[Math.min(RADII.indexOf(radius) + 1, RADII.length - 1)])}
-              onReset={() => setState({ kind: "manual" })}
-            />
-          ) : (
-            <ul className="space-y-3">
-              {nearby.map((ev) => (
-                <EventCard key={ev.id} ev={ev} distanceKm={ev.distanceKm} />
-              ))}
-            </ul>
-          )}
+                <EventCard ev={ev} copied={copied} onShare={share} />
+              </div>
+            );
+          })}
         </div>
-      )}
 
-      {/* MANUAL */}
-      {state.kind === "manual" && (
-        <div className="space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
-            <input
-              type="text"
-              value={manualQ}
-              onChange={(e) => setManualQ(e.target.value)}
-              placeholder="Ej: Palermo, Belgrano, CABA, Córdoba…"
-              autoFocus
-              className="w-full pl-9 pr-9 py-3 rounded-xl border border-zinc-300 bg-white focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
-            />
-            {manualQ && (
-              <button
-                onClick={() => setManualQ("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+        {/* Right gradient fade for peek effect */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 bg-gradient-to-l from-white via-white/70 to-transparent" />
+      </div>
 
-          {!manualQ.trim() && (
-            <p className="text-xs text-zinc-400 text-center py-4">
-              Ejemplos: Palermo · Belgrano · Recoleta · CABA · Córdoba · Rosario
-            </p>
-          )}
-
-          {manualLoading && (
-            <div className="space-y-3">
-              {[1, 2].map((i) => (
-                <div key={i} className="bg-white rounded-2xl border border-zinc-200 p-4 space-y-2">
-                  <Skeleton className="h-5 w-2/3" />
-                  <Skeleton className="h-3 w-1/2" />
-                  <Skeleton className="h-3 w-1/3" />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!manualLoading && manualQ.trim() && manualEvs.length === 0 && (
-            <div className="text-center py-10 bg-white rounded-2xl border border-zinc-200">
-              <p className="text-sm font-medium text-zinc-700 mb-1">
-                No encontramos eventos en esa zona.
-              </p>
-              <p className="text-xs text-zinc-400">Probá con otra ciudad o barrio.</p>
-            </div>
-          )}
-
-          {!manualLoading && manualEvs.length > 0 && (
-            <ul className="space-y-3">
-              {manualEvs.map((ev) => (
-                <EventCard key={ev.id} ev={ev} distanceKm={null} />
-              ))}
-            </ul>
-          )}
-
-          <button onClick={reset} className="text-xs text-zinc-400 hover:text-zinc-600 transition">
-            ← Volver
-          </button>
-        </div>
-      )}
+      {/* Dot indicators */}
+      <div className="flex items-center justify-center gap-1.5 mt-5">
+        {EVENTS.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => { setCurrent(i); pauseRef.current = true; setTimeout(() => { pauseRef.current = false; }, 6000); }}
+            aria-label={`Ir al evento ${i + 1}`}
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              i === current ? "w-5 bg-violet-500" : "w-1.5 bg-zinc-200 hover:bg-zinc-300"
+            }`}
+          />
+        ))}
+      </div>
     </section>
   );
 }
 
-function EventCard({ ev, distanceKm }: { ev: BaseEvent; distanceKm: number | null }) {
-  const { date, time } = fmtDate(ev.start_at);
-  const evStyles = getEventColorStyles(ev.color);
-  const spots = ev.capacity;
+function EventCard({
+  ev,
+  copied,
+  onShare,
+}: {
+  ev: DemoEvent;
+  copied: string | null;
+  onShare: (ev: DemoEvent) => void;
+}) {
   const spotsClass =
-    spots === null
-      ? ""
-      : spots <= 3
+    ev.spots <= 3
       ? "bg-red-100 text-red-700"
-      : spots <= 7
+      : ev.spots <= 7
       ? "bg-amber-100 text-amber-700"
       : "bg-emerald-100 text-emerald-700";
 
   return (
-    <li className={`rounded-2xl border overflow-hidden shadow-sm ${evStyles.card} ${evStyles.border}`}>
-      {ev.image_url && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={ev.image_url} alt={ev.title} className="w-full h-36 object-cover" />
-      )}
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h4 className="font-semibold text-zinc-900 text-base leading-snug flex-1">{ev.title}</h4>
-          {distanceKm !== null && (
-            <span className="shrink-0 text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-100 text-violet-700">
-              A {distanceKm} km
-            </span>
-          )}
+    <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-white shadow-sm flex flex-col h-full">
+      {/* Image */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={ev.image}
+        alt={ev.title}
+        className="w-full h-36 sm:h-44 object-cover"
+        loading="lazy"
+      />
+
+      {/* Content */}
+      <div className="p-4 flex flex-col flex-1 gap-2">
+        <h4 className="font-bold text-zinc-900 text-base leading-snug">{ev.title}</h4>
+
+        <p className="text-sm font-medium text-zinc-600 truncate">{ev.venue}</p>
+
+        <div className="flex items-center gap-1 text-xs text-zinc-400">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{ev.location}</span>
         </div>
 
-        <p className="text-sm text-zinc-500 capitalize">
-          {date} · {time} hs
-        </p>
-        {ev.location && (
-          <p className="text-sm text-zinc-500 mt-0.5 flex items-center gap-1 truncate">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
-            {ev.location}
-          </p>
-        )}
+        <div className="flex items-center gap-1 text-xs text-zinc-400">
+          <Calendar className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{ev.dateLabel}</span>
+        </div>
 
-        <div className="flex items-center justify-between mt-3 gap-2">
-          {spots !== null ? (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${spotsClass}`}>
-              {spots === 1 ? "Queda 1 cupo" : `Quedan ${spots} cupos`}
-            </span>
-          ) : (
-            <span />
-          )}
-          <Link
-            href={`/u/${ev.creator.username ?? ev.creator_id}/e/${ev.id}`}
-            className="shrink-0 flex items-center gap-1 px-4 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-700 transition"
+        <span className={`self-start text-xs font-semibold px-2 py-0.5 rounded-full ${spotsClass}`}>
+          {ev.spots === 1 ? "Queda 1 cupo" : `Quedan ${ev.spots} cupos`}
+        </span>
+
+        {/* Actions */}
+        <div className="flex gap-2 mt-auto pt-1">
+          <a
+            href={gCalLink(ev)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center gap-1 py-2 rounded-xl bg-zinc-900 text-white text-xs font-semibold hover:bg-zinc-700 transition"
           >
-            Ver detalle <ChevronRight className="h-3.5 w-3.5" />
-          </Link>
-        </div>
-      </div>
-    </li>
-  );
-}
-
-function EmptyNearby({
-  canExpand,
-  onExpand,
-  onReset,
-}: {
-  canExpand: boolean;
-  onExpand: () => void;
-  onReset: () => void;
-}) {
-  return (
-    <div className="text-center py-10 bg-white rounded-2xl border border-zinc-200">
-      <p className="text-2xl mb-3">🗺️</p>
-      <p className="text-sm font-medium text-zinc-800 mb-1">
-        No encontramos eventos disponibles cerca tuyo.
-      </p>
-      <p className="text-xs text-zinc-500 mb-5">
-        Probá ampliar el radio de búsqueda o elegir otra zona.
-      </p>
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-        {canExpand && (
+            <Calendar className="h-3.5 w-3.5" />
+            Agregar
+          </a>
           <button
-            onClick={onExpand}
-            className="px-4 py-2 rounded-xl bg-violet-600 text-white text-sm font-semibold hover:bg-violet-700 transition"
+            onClick={() => onShare(ev)}
+            className="flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-zinc-200 text-zinc-600 text-xs font-semibold hover:bg-zinc-50 transition"
           >
-            Ampliar radio
+            <Share2 className="h-3.5 w-3.5" />
+            {copied === ev.id ? "¡Copiado!" : "Compartir"}
           </button>
-        )}
-        <button
-          onClick={onReset}
-          className="px-4 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-sm font-semibold hover:bg-zinc-200 transition"
-        >
-          Elegir otra ubicación
-        </button>
+        </div>
       </div>
     </div>
   );
