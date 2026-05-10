@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  Calendar, Check, ChevronLeft, ChevronRight, Compass, Globe,
+  Calendar, Check, ChevronLeft, ChevronRight,
   Lock, Pencil, Trash2, User as UserIcon, UserPlus, X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -478,33 +478,25 @@ export default function HomePage() {
         onSignOut={signOut}
       />
 
-      <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {/* Main tab bar */}
-        <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1">
-          <button
-            onClick={() => setMainTab("discover")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
-              mainTab === "discover" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            <Compass className="h-4 w-4" /> Descubrí
-          </button>
-          <button
-            onClick={() => setMainTab("events")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
-              mainTab === "events" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            <Globe className="h-4 w-4" /> Eventos
-          </button>
-          <button
-            onClick={() => setMainTab("calendar")}
-            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
-              mainTab === "calendar" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
-            }`}
-          >
-            <Calendar className="h-4 w-4" /> Calendario
-          </button>
+      <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        {/* Main tab bar — underline style */}
+        <div className="flex border-b border-stone-200">
+          {(["discover", "events", "calendar"] as const).map((t) => {
+            const labels = { discover: "Descubrí", events: "Eventos", calendar: "Calendario" };
+            return (
+              <button
+                key={t}
+                onClick={() => setMainTab(t)}
+                className={`flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+                  mainTab === t
+                    ? "border-teal-700 text-teal-700"
+                    : "border-transparent text-stone-500 hover:text-stone-800"
+                }`}
+              >
+                {labels[t]}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Descubrí tab ── */}
@@ -520,37 +512,34 @@ export default function HomePage() {
           <>
             <SearchBar value={query} onChange={setQuery} placeholder="Buscar eventos…" />
 
-            <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1 overflow-x-auto">
-              <button
-                onClick={() => setEventFilter("public")}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer ${
-                  eventFilter === "public" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
-                }`}
-              >
-                <Globe className="h-4 w-4" /> Públicos ({publicItems.length})
-              </button>
-              <button
-                onClick={() => setEventFilter("private")}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer ${
-                  eventFilter === "private" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"
-                }`}
-              >
-                <Lock className="h-4 w-4" /> Privados ({privateItems.length})
-              </button>
-              <button
-                onClick={() => setEventFilter("mine")}
-                className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer ${
-                  eventFilter === "mine" ? "bg-blue-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
-                }`}
-              >
-                <UserIcon className="h-4 w-4" /> Míos ({mineItems.length})
-              </button>
+            <div className="flex border-b border-stone-200">
+              {(["public", "private", "mine"] as const).map((f) => {
+                const meta = {
+                  public: { label: "Públicos", count: publicItems.length },
+                  private: { label: "Privados", count: privateItems.length },
+                  mine: { label: "Míos", count: mineItems.length },
+                };
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setEventFilter(f)}
+                    className={`flex-1 py-2 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
+                      eventFilter === f
+                        ? "border-teal-700 text-teal-700"
+                        : "border-transparent text-stone-500 hover:text-stone-800"
+                    }`}
+                  >
+                    {meta[f].label}
+                    <span className="ml-1 text-xs opacity-60">({meta[f].count})</span>
+                  </button>
+                );
+              })}
             </div>
 
             {loading ? (
               <FeedSkeleton />
             ) : filteredItems.length === 0 ? (
-              <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200 shadow-sm">
+              <div className="text-sm text-stone-500 text-center py-14 bg-white rounded-2xl card-shadow">
                 {query.trim() ? (
                   "Sin resultados para tu búsqueda."
                 ) : eventFilter === "public" ? (
@@ -584,7 +573,7 @@ export default function HomePage() {
                   return (
                     <li
                       key={ev.id}
-                      className={`rounded-2xl border overflow-hidden hover:shadow-md transition shadow-sm ${evStyles.card} ${evStyles.border}`}
+                      className={`rounded-2xl overflow-hidden card-shadow card-shadow-hover transition-shadow ${evStyles.card} ${evStyles.border} border`}
                     >
                       {ev.image_url && (
                         <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="cursor-pointer">

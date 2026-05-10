@@ -281,7 +281,7 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
 
   return (
     <>
-      <section className="bg-white rounded-3xl shadow-sm border border-zinc-100 p-6 sm:p-8">
+      <section className="bg-white rounded-3xl card-shadow p-6 sm:p-8">
         <div className="flex items-center justify-between mb-5">
           <div>
             <div className="flex items-center gap-1.5 mb-0.5">
@@ -354,7 +354,7 @@ function EventCard({
   onAdd?: (ev: DemoEvent) => void;
 }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-white shadow-sm flex flex-col h-full">
+    <div className="rounded-2xl overflow-hidden bg-white card-shadow flex flex-col h-full">
       <button className="text-left w-full cursor-pointer" onClick={onOpen}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ev.image} alt={ev.title} className="w-full h-36 sm:h-44 object-cover" loading="lazy" />

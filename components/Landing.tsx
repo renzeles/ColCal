@@ -58,24 +58,28 @@ export function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br bg-stone-50">
-      <header className="border-b border-zinc-200 bg-white/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-zinc-900">Agenddi</h1>
+    <div className="min-h-screen bg-stone-50">
+      <header className="border-b border-stone-100 bg-white/95 backdrop-blur-md sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="max-w-3xl mx-auto px-5 h-14 flex items-center justify-between">
+          <span className="font-semibold text-stone-900 tracking-tight">Agenddi</span>
           <Link
             href="/login"
-            className="px-4 h-9 rounded-full bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800 transition flex items-center"
+            className="px-5 h-9 rounded-full bg-stone-900 text-white text-sm font-medium hover:bg-stone-700 transition-colors flex items-center"
           >
             Iniciar sesión
           </Link>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-4 py-10 sm:py-16 space-y-12">
-        <section className="text-center">
-          <h2 className="text-3xl sm:text-5xl font-bold text-zinc-900 tracking-tight">
+      <main className="max-w-3xl mx-auto px-5 py-14 sm:py-20 space-y-14">
+        <section className="text-center space-y-3">
+          <p className="text-xs font-semibold tracking-widest text-teal-700 uppercase">Agenddi</p>
+          <h2 className="text-4xl sm:text-6xl font-bold text-stone-900 tracking-tight leading-none">
             Descubrí
           </h2>
+          <p className="text-stone-500 text-base sm:text-lg max-w-sm mx-auto leading-relaxed">
+            Eventos cerca tuyo, en tu ciudad, con tu gente.
+          </p>
         </section>
 
         {items.length > 0 && (
@@ -89,7 +93,7 @@ export function Landing() {
               {items.map((ev) => {
                 const evStyles = getEventColorStyles(ev.color);
                 return (
-                <li key={ev.id} className={`rounded-2xl border overflow-hidden shadow-sm ${evStyles.card} ${evStyles.border}`}>
+                <li key={ev.id} className={`rounded-2xl border overflow-hidden card-shadow card-shadow-hover transition-shadow ${evStyles.card} ${evStyles.border}`}>
                   <Link href={`/u/${ev.creator.username}/e/${ev.id}`}>
                     {ev.image_url && (
                       // eslint-disable-next-line @next/next/no-img-element
