@@ -433,14 +433,14 @@ export default function HomePage() {
         visibility: "public",
         image_url: ev.image,
         color: "violet",
-        is_online: false,
       }).select("*").single();
       if (error) throw error;
       const creator = user.profile as Profile;
       setMineItems((prev) => [{ ...(data as SentEvent), creator }, ...prev]);
       toast.show("success", `"${ev.title}" agregado a Mis eventos.`);
-    } catch {
-      toast.show("error", "No se pudo agregar el evento.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? "";
+      toast.show("error", msg ? `Error: ${msg}` : "No se pudo agregar el evento.");
     }
   }
 
