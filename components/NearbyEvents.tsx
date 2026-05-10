@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Share2, X, Users } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, MapPin, Share2, Users, X } from "lucide-react";
 
-type DemoEvent = {
+export type DemoEvent = {
   id: string;
   title: string;
   venue: string;
@@ -29,8 +29,7 @@ const EVENTS: DemoEvent[] = [
     attendees: ["Martina R.", "Lucas F.", "Sofía M.", "Andrés P."],
     startISO: "2026-05-16T21:00:00",
     endISO: "2026-05-16T23:30:00",
-    image:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&h=500",
+    image: "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&h=500",
   },
   {
     id: "2",
@@ -43,8 +42,7 @@ const EVENTS: DemoEvent[] = [
     attendees: ["Valentina G.", "Tomás K."],
     startISO: "2026-05-17T22:00:00",
     endISO: "2026-05-18T01:00:00",
-    image:
-      "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&h=500",
+    image: "https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800&h=500",
   },
   {
     id: "3",
@@ -57,8 +55,7 @@ const EVENTS: DemoEvent[] = [
     attendees: ["Camila B.", "Ignacio W.", "Florencia D.", "Ramiro S.", "Paula T."],
     startISO: "2026-05-21T20:30:00",
     endISO: "2026-05-21T23:00:00",
-    image:
-      "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=800&h=500",
+    image: "https://images.unsplash.com/photo-1511192336575-5a79af67a629?auto=format&fit=crop&w=800&h=500",
   },
   {
     id: "4",
@@ -71,8 +68,7 @@ const EVENTS: DemoEvent[] = [
     attendees: ["Elena C.", "Nicolás H.", "Agustina L."],
     startISO: "2026-05-23T11:00:00",
     endISO: "2026-05-23T19:00:00",
-    image:
-      "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&h=500",
+    image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=800&h=500",
   },
   {
     id: "5",
@@ -85,8 +81,7 @@ const EVENTS: DemoEvent[] = [
     attendees: ["Diego M.", "Carolina V."],
     startISO: "2026-05-29T21:30:00",
     endISO: "2026-05-29T23:30:00",
-    image:
-      "https://images.unsplash.com/photo-1527224857830-43a7acc85260?auto=format&fit=crop&w=800&h=500",
+    image: "https://images.unsplash.com/photo-1527224857830-43a7acc85260?auto=format&fit=crop&w=800&h=500",
   },
   {
     id: "6",
@@ -99,24 +94,33 @@ const EVENTS: DemoEvent[] = [
     attendees: ["Julieta P.", "Marcos N.", "Renata A.", "Bruno E."],
     startISO: "2026-05-27T20:00:00",
     endISO: "2026-05-27T23:00:00",
-    image:
-      "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&h=500",
+    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=800&h=500",
   },
 ];
 
 function gCalLink(ev: DemoEvent) {
-  const fmt = (d: Date) =>
-    d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const url = new URL("https://calendar.google.com/calendar/render");
   url.searchParams.set("action", "TEMPLATE");
   url.searchParams.set("text", ev.title);
-  url.searchParams.set(
-    "dates",
-    `${fmt(new Date(ev.startISO))}/${fmt(new Date(ev.endISO))}`
-  );
+  url.searchParams.set("dates", `${fmt(new Date(ev.startISO))}/${fmt(new Date(ev.endISO))}`);
   url.searchParams.set("details", `${ev.venue} · ${ev.location}`);
   url.searchParams.set("location", `${ev.venue}, ${ev.location}`);
   return url.toString();
+}
+
+const AVATAR_COLORS = [
+  "bg-violet-500", "bg-sky-500", "bg-emerald-500",
+  "bg-amber-500", "bg-pink-500", "bg-orange-500", "bg-blue-500",
+];
+
+function nameColor(name: string) {
+  const code = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  return AVATAR_COLORS[code % AVATAR_COLORS.length];
+}
+
+function initials(name: string) {
+  return name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
 function EventDetailModal({
@@ -124,11 +128,13 @@ function EventDetailModal({
   onClose,
   copied,
   onShare,
+  onAdd,
 }: {
   ev: DemoEvent;
   onClose: () => void;
   copied: string | null;
   onShare: (ev: DemoEvent) => void;
+  onAdd?: (ev: DemoEvent) => void;
 }) {
   const spotsClass =
     ev.spots <= 3
@@ -138,40 +144,27 @@ function EventDetailModal({
       : "bg-emerald-100 text-emerald-700";
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
-      onClick={onClose}
-    >
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      {/* Sheet */}
       <div
         className="relative bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Image */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={ev.image}
-          alt={ev.title}
-          className="w-full h-52 sm:h-64 object-cover"
-        />
+        <img src={ev.image} alt={ev.title} className="w-full h-52 sm:h-64 object-cover" />
 
-        {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition"
+          className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition cursor-pointer"
           aria-label="Cerrar"
         >
           <X className="h-4 w-4" />
         </button>
 
-        {/* Content */}
         <div className="p-6 space-y-4">
           <h3 className="text-2xl font-bold text-zinc-900 leading-tight">{ev.title}</h3>
 
-          {/* Meta */}
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-zinc-600">
               <Calendar className="h-4 w-4 text-violet-500 shrink-0" />
@@ -183,47 +176,59 @@ function EventDetailModal({
             </div>
           </div>
 
-          {/* Spots badge */}
           <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${spotsClass}`}>
             {ev.spots === 1 ? "Queda 1 cupo" : `Quedan ${ev.spots} cupos`}
           </span>
 
-          {/* Attendees */}
           {ev.attendees.length > 0 && (
             <div>
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5 mb-3">
                 <Users className="h-4 w-4 text-violet-500" />
                 <span className="text-sm font-semibold text-zinc-700">
                   {ev.attendees.length} {ev.attendees.length === 1 ? "persona va" : "personas van"}
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-2">
                 {ev.attendees.map((name) => (
-                  <span
-                    key={name}
-                    className="text-xs bg-zinc-100 text-zinc-600 px-2.5 py-1 rounded-full"
-                  >
-                    {name}
-                  </span>
+                  <div key={name} className="flex flex-col items-center gap-1">
+                    <div
+                      className={`h-10 w-10 rounded-full ${nameColor(name)} flex items-center justify-center text-white text-xs font-bold`}
+                      title={name}
+                    >
+                      {initials(name)}
+                    </div>
+                    <span className="text-[10px] text-zinc-500 max-w-[40px] text-center leading-tight truncate">
+                      {name.split(" ")[0]}
+                    </span>
+                  </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-2 pt-1">
-            <a
-              href={gCalLink(ev)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-700 transition"
-            >
-              <Calendar className="h-4 w-4" />
-              Agregar al calendario
-            </a>
+            {onAdd ? (
+              <button
+                onClick={() => { onAdd(ev); onClose(); }}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-700 transition cursor-pointer"
+              >
+                <Calendar className="h-4 w-4" />
+                Agregar a Agenddi
+              </button>
+            ) : (
+              <a
+                href={gCalLink(ev)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-700 transition cursor-pointer"
+              >
+                <Calendar className="h-4 w-4" />
+                Agregar al calendario
+              </a>
+            )}
             <button
               onClick={() => onShare(ev)}
-              className="flex items-center justify-center px-4 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition"
+              className="flex items-center justify-center px-4 py-2.5 rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition cursor-pointer"
               aria-label="Compartir"
             >
               <Share2 className="h-4 w-4" />
@@ -238,7 +243,7 @@ function EventDetailModal({
   );
 }
 
-export function NearbyEvents() {
+export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
   const n = EVENTS.length;
   const [current, setCurrent] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
@@ -254,7 +259,6 @@ export function NearbyEvents() {
     return () => clearInterval(t);
   }, [advance]);
 
-  // Pause auto-advance while modal is open
   useEffect(() => {
     pauseRef.current = selected !== null;
   }, [selected]);
@@ -262,9 +266,7 @@ export function NearbyEvents() {
   function go(dir: 1 | -1) {
     setCurrent((c) => (c + dir + n) % n);
     pauseRef.current = true;
-    setTimeout(() => {
-      if (!selected) pauseRef.current = false;
-    }, 6000);
+    setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000);
   }
 
   async function share(ev: DemoEvent) {
@@ -280,88 +282,58 @@ export function NearbyEvents() {
   return (
     <>
       <section className="bg-white rounded-3xl shadow-sm border border-zinc-100 p-6 sm:p-8">
-        {/* Header */}
         <div className="flex items-center justify-between mb-5">
           <div>
             <div className="flex items-center gap-1.5 mb-0.5">
               <MapPin className="h-3.5 w-3.5 text-violet-500" />
-              <span className="text-xs font-semibold text-violet-600 uppercase tracking-wide">
-                Cerca tuyo
-              </span>
+              <span className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Cerca tuyo</span>
             </div>
             <h3 className="text-xl font-bold text-zinc-900">Eventos cerca tuyo</h3>
           </div>
 
-          {/* Arrows */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => go(-1)}
-              aria-label="Anterior"
-              className="text-zinc-300 hover:text-zinc-600 transition-colors"
-            >
+            <button onClick={() => go(-1)} aria-label="Anterior" className="text-zinc-300 hover:text-zinc-600 transition-colors cursor-pointer">
               <ChevronLeft className="h-7 w-7" />
             </button>
-            <button
-              onClick={() => go(1)}
-              aria-label="Siguiente"
-              className="text-zinc-300 hover:text-zinc-600 transition-colors"
-            >
+            <button onClick={() => go(1)} aria-label="Siguiente" className="text-zinc-300 hover:text-zinc-600 transition-colors cursor-pointer">
               <ChevronRight className="h-7 w-7" />
             </button>
           </div>
         </div>
 
-        {/* Carousel */}
         <div className="relative overflow-hidden">
           <div className="flex gap-3">
             {[0, 1, 2, 3].map((offset) => {
               const ev = EVENTS[(current + offset) % n];
               return (
-                <div
-                  key={`${current}-${offset}`}
-                  className="shrink-0 w-[78%] sm:w-[45%] md:w-[30%]"
-                >
-                  <EventCard
-                    ev={ev}
-                    copied={copied}
-                    onShare={share}
-                    onOpen={() => setSelected(ev)}
-                  />
+                <div key={`${current}-${offset}`} className="shrink-0 w-[78%] sm:w-[45%] md:w-[30%]">
+                  <EventCard ev={ev} copied={copied} onShare={share} onOpen={() => setSelected(ev)} onAdd={onAdd} />
                 </div>
               );
             })}
           </div>
-
-          {/* Right gradient fade */}
           <div className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 bg-gradient-to-l from-white via-white/70 to-transparent" />
         </div>
 
-        {/* Dot indicators */}
         <div className="flex items-center justify-center gap-1.5 mt-5">
           {EVENTS.map((_, i) => (
             <button
               key={i}
-              onClick={() => {
-                setCurrent(i);
-                pauseRef.current = true;
-                setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000);
-              }}
+              onClick={() => { setCurrent(i); pauseRef.current = true; setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000); }}
               aria-label={`Ir al evento ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i === current ? "w-5 bg-violet-500" : "w-1.5 bg-zinc-200 hover:bg-zinc-300"
-              }`}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === current ? "w-5 bg-violet-500" : "w-1.5 bg-zinc-200 hover:bg-zinc-300"}`}
             />
           ))}
         </div>
       </section>
 
-      {/* Detail modal */}
       {selected && (
         <EventDetailModal
           ev={selected}
           onClose={() => setSelected(null)}
           copied={copied}
           onShare={share}
+          onAdd={onAdd}
         />
       )}
     </>
@@ -373,23 +345,19 @@ function EventCard({
   copied,
   onShare,
   onOpen,
+  onAdd,
 }: {
   ev: DemoEvent;
   copied: string | null;
   onShare: (ev: DemoEvent) => void;
   onOpen: () => void;
+  onAdd?: (ev: DemoEvent) => void;
 }) {
   return (
     <div className="rounded-2xl border border-zinc-200 overflow-hidden bg-white shadow-sm flex flex-col h-full">
-      {/* Clickable image + title area */}
-      <button className="text-left w-full" onClick={onOpen}>
+      <button className="text-left w-full cursor-pointer" onClick={onOpen}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={ev.image}
-          alt={ev.title}
-          className="w-full h-36 sm:h-44 object-cover"
-          loading="lazy"
-        />
+        <img src={ev.image} alt={ev.title} className="w-full h-36 sm:h-44 object-cover" loading="lazy" />
         <div className="px-4 pt-3 pb-2">
           <h4 className="font-bold text-zinc-900 text-base leading-snug">{ev.title}</h4>
           <p className="text-sm font-medium text-zinc-600 truncate mt-0.5">{ev.venue}</p>
@@ -404,20 +372,29 @@ function EventCard({
         </div>
       </button>
 
-      {/* Actions */}
       <div className="flex gap-2 px-4 pb-4 mt-auto">
-        <a
-          href={gCalLink(ev)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center py-2 rounded-xl bg-zinc-900 text-white text-lg font-semibold hover:bg-zinc-700 transition"
-          aria-label="Agregar al calendario"
-        >
-          +
-        </a>
+        {onAdd ? (
+          <button
+            onClick={() => onAdd(ev)}
+            className="flex-1 flex items-center justify-center py-2 rounded-xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-700 transition cursor-pointer"
+            aria-label="Agregar a Agenddi"
+          >
+            +
+          </button>
+        ) : (
+          <a
+            href={gCalLink(ev)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-1 flex items-center justify-center py-2 rounded-xl bg-zinc-900 text-white text-sm font-bold hover:bg-zinc-700 transition cursor-pointer"
+            aria-label="Agregar al calendario"
+          >
+            +
+          </a>
+        )}
         <button
           onClick={() => onShare(ev)}
-          className="flex items-center justify-center px-3 py-2 rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition"
+          className="flex items-center justify-center px-3 py-2 rounded-xl border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition cursor-pointer"
           aria-label="Compartir"
         >
           {copied === ev.id
