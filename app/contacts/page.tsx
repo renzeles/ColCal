@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Share2, Sparkles, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { Check, Share2, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
@@ -16,6 +17,7 @@ type Tab = "contacts" | "following";
 export default function ContactsPage() {
   const { user, loading: userLoading, signOut } = useUser();
   const toast = useToast();
+  const { t } = useT();
 
   const [tab, setTab] = useState<Tab>("contacts");
   const [following, setFollowing] = useState<Profile[]>([]);
@@ -190,45 +192,34 @@ export default function ContactsPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-3xl font-bold text-stone-900" style={{ fontFamily: "var(--font-serif)" }}>Contactos</h1>
+          <h1 className="text-3xl font-bold text-stone-900" style={{ fontFamily: "var(--font-serif)" }}>{t("contacts_title")}</h1>
           <button
             onClick={handleInvite}
             className="shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-full bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition"
           >
             {inviteCopied ? (
-              <><Check className="h-3.5 w-3.5" /> Copiado</>
+              <><Check className="h-3.5 w-3.5" /> {t("contacts_copied")}</>
             ) : (
-              <><Share2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">Invitar a Agenddi</span><span className="sm:hidden">Invitar</span></>
+              <><Share2 className="h-3.5 w-3.5" /><span className="hidden sm:inline">{t("contacts_invite")}</span><span className="sm:hidden">{t("contacts_invite_short")}</span></>
             )}
           </button>
         </div>
 
-        <SearchBar value={query} onChange={setQuery} placeholder="Buscar usuarios en Agenddi…" />
+        <SearchBar value={query} onChange={setQuery} placeholder={t("contacts_search")} />
 
-        {/* Suggestions — horizontal scroll */}
+        {/* Suggestions — horizontal scroll, no title */}
         {!isSearchMode && suggestions.length > 0 && (
-          <section className="bg-white rounded-2xl card-shadow p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="h-4 w-4 text-[#c2410c]" />
-              <h2
-                className="text-lg font-bold text-stone-900"
-                style={{ fontFamily: "var(--font-serif)" }}
-              >
-                Te proponemos
-              </h2>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 snap-x">
-              {suggestions.map((p) => (
-                <SuggestionCard
-                  key={p.id}
-                  profile={p}
-                  busy={busyId === p.id}
-                  pending={pendingIds.has(p.id)}
-                  onAdd={() => sendRequest(p)}
-                />
-              ))}
-            </div>
-          </section>
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 snap-x">
+            {suggestions.map((p) => (
+              <SuggestionCard
+                key={p.id}
+                profile={p}
+                busy={busyId === p.id}
+                pending={pendingIds.has(p.id)}
+                onAdd={() => sendRequest(p)}
+              />
+            ))}
+          </div>
         )}
 
         {!isSearchMode && (
@@ -237,22 +228,22 @@ export default function ContactsPage() {
               onClick={() => setTab("contacts")}
               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${tab === "contacts" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"}`}
             >
-              Contactos ({mutuals.length})
+              {t("contacts_tab_contacts")} ({mutuals.length})
             </button>
             <button
               onClick={() => setTab("following")}
               className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition ${tab === "following" ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-100"}`}
             >
-              Seguidos ({following.length})
+              {t("contacts_tab_following")} ({following.length})
             </button>
           </div>
         )}
 
         {isSearchMode ? (
           searching ? (
-            <div className="text-sm text-zinc-500 text-center py-8">Buscando…</div>
+            <div className="text-sm text-stone-500 text-center py-8">{t("contacts_searching")}</div>
           ) : searchResults.length === 0 ? (
-            <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200">No se encontraron usuarios.</div>
+            <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">{t("contacts_no_results")}</div>
           ) : (
             <ul className="space-y-2">
               {searchResults.map((p) => (
@@ -269,10 +260,10 @@ export default function ContactsPage() {
             </ul>
           )
         ) : loading ? (
-          <div className="text-sm text-zinc-500 text-center py-8">Cargando…</div>
+          <div className="text-sm text-stone-500 text-center py-8">{t("page_loading")}</div>
         ) : tabList.length === 0 ? (
-          <div className="text-sm text-zinc-500 text-center py-12 bg-white rounded-2xl border border-zinc-200">
-            {tab === "contacts" ? "Todavía no tenés contactos." : "Todavía no seguís a nadie."}
+          <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
+            {tab === "contacts" ? t("contacts_empty_contacts") : t("contacts_empty_following")}
           </div>
         ) : (
           <ul className="space-y-2">
@@ -310,6 +301,7 @@ function UserRow({
   onAdd: () => void;
   onUnfollow: () => void;
 }) {
+  const { t } = useT();
   return (
     <li className="bg-white rounded-xl card-shadow p-3 flex items-center gap-3">
       <Link href={`/u/${p.username}`}>
@@ -322,11 +314,11 @@ function UserRow({
 
       {isMutual ? (
         <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-default">
-          <UserCheck className="h-3.5 w-3.5" /> Contacto
+          <UserCheck className="h-3.5 w-3.5" /> {t("contacts_contact")}
         </span>
       ) : isPending ? (
         <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-100 text-stone-500 cursor-default">
-          <UserMinus className="h-3.5 w-3.5" /> Enviada
+          <UserMinus className="h-3.5 w-3.5" /> {t("contacts_pending")}
         </span>
       ) : (
         <button
@@ -334,7 +326,7 @@ function UserRow({
           disabled={busy}
           className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-900 text-[#faf6ef] hover:bg-stone-700 transition disabled:opacity-60 cursor-pointer"
         >
-          <UserPlus className="h-3.5 w-3.5" /> Añadir
+          <UserPlus className="h-3.5 w-3.5" /> {t("contacts_add")}
         </button>
       )}
     </li>
@@ -352,8 +344,9 @@ function SuggestionCard({
   pending: boolean;
   onAdd: () => void;
 }) {
+  const { t } = useT();
   return (
-    <div className="snap-start shrink-0 w-32 bg-[#faf6ef] rounded-2xl border border-stone-200 p-3 flex flex-col items-center text-center">
+    <div className="snap-start shrink-0 w-32 bg-white rounded-2xl card-shadow p-3 flex flex-col items-center text-center">
       <Link href={`/u/${p.username}`} className="mb-2">
         <Avatar src={p.avatar_url} name={p.full_name} size="lg" />
       </Link>
@@ -363,7 +356,7 @@ function SuggestionCard({
       <p className="text-[10px] text-stone-500 truncate w-full">@{p.username}</p>
       {pending ? (
         <span className="mt-2 w-full text-center text-[10px] font-semibold text-stone-500 px-2 py-1.5 rounded-full bg-stone-100">
-          Enviada
+          {t("contacts_pending")}
         </span>
       ) : (
         <button
@@ -371,7 +364,7 @@ function SuggestionCard({
           disabled={busy}
           className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-stone-700 px-2 py-1.5 rounded-full transition cursor-pointer disabled:opacity-60"
         >
-          + Añadir
+          + {t("contacts_add")}
         </button>
       )}
     </div>

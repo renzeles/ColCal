@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar, Globe } from "lucide-react";
+import { useT } from "@/lib/i18n";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { NearbyEvents } from "@/components/NearbyEvents";
@@ -24,6 +25,7 @@ function formatDate(iso: string) {
 
 export function Landing() {
   const router = useRouter();
+  const { t, lang, setLang } = useT();
   const [items, setItems] = useState<FeedItem[]>([]);
 
   useEffect(() => {
@@ -67,12 +69,21 @@ export function Landing() {
           >
             Agenddi<span className="text-[#c2410c]">.</span>
           </span>
-          <Link
-            href="/login"
-            className="px-5 h-9 rounded-full bg-stone-900 text-[#faf6ef] text-sm font-medium hover:bg-stone-700 transition-colors flex items-center"
-          >
-            Iniciar sesión
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLang(lang === "en" ? "es" : "en")}
+              className="text-[10px] font-bold tracking-wider text-stone-500 hover:text-[#c2410c] transition-colors px-1.5 py-1 rounded cursor-pointer"
+              aria-label="Language"
+            >
+              {lang.toUpperCase()}
+            </button>
+            <Link
+              href="/login"
+              className="px-5 h-9 rounded-full bg-stone-900 text-[#faf6ef] text-sm font-medium hover:bg-stone-700 transition-colors flex items-center"
+            >
+              {t("landing_login")}
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -85,11 +96,11 @@ export function Landing() {
             className="text-6xl sm:text-8xl font-bold text-stone-900 tracking-tight leading-[0.9]"
             style={{ fontFamily: "var(--font-serif)", fontVariationSettings: "'opsz' 144" }}
           >
-            Descubrí
+            {t("landing_hero")}
           </h2>
           <p className="text-stone-600 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
-            Eventos cerca tuyo, en tu ciudad, con tu gente —
-            <span className="text-[#c2410c] font-medium"> sin esfuerzo</span>.
+            {t("landing_subtitle")}
+            <span className="text-[#c2410c] font-medium"> {t("landing_subtitle_accent")}</span>.
           </p>
         </section>
 
@@ -100,7 +111,7 @@ export function Landing() {
                 className="text-2xl font-bold text-stone-900 flex items-center gap-2"
                 style={{ fontFamily: "var(--font-serif)" }}
               >
-                <Globe className="h-4 w-4 text-[#c2410c]" /> Eventos públicos
+                <Globe className="h-4 w-4 text-[#c2410c]" /> {t("landing_public_events")}
               </h3>
             </div>
             <ul className="grid sm:grid-cols-2 gap-3">

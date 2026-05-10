@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, MapPin, Share2, Users, X } from "lucide-react";
+import { useT } from "@/lib/i18n";
 
 export type DemoEvent = {
   id: string;
@@ -104,10 +105,11 @@ function ev(
   const start = new Date(iso);
   const end = new Date(start.getTime() + durationHrs * 3_600_000);
   const dateLabel = start
-    .toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
+    .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
     .replace(/\./g, "");
-  const timeLabel =
-    start.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" }) + " hs";
+  const timeLabel = start.toLocaleTimeString("en-GB", {
+    hour: "2-digit", minute: "2-digit", hour12: false,
+  });
   return {
     id: String(id),
     title,
@@ -276,6 +278,7 @@ function EventDetailModal({
   onShare: (ev: DemoEvent) => void;
   onAdd?: (ev: DemoEvent) => void;
 }) {
+  const { t } = useT();
   const spotsClass =
     ev.spots <= 3 ? "bg-red-100 text-red-700"
     : ev.spots <= 7 ? "bg-amber-100 text-amber-700"
@@ -291,15 +294,10 @@ function EventDetailModal({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ev.image} alt={ev.title} className="w-full h-52 sm:h-64 object-cover" />
 
-        {/* Hood badge overlay */}
-        <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#faf6ef]/95 text-[#c2410c] shadow-sm">
-          {ev.hood}
-        </span>
-
         <button
           onClick={onClose}
           className="absolute top-3 right-3 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition cursor-pointer"
-          aria-label="Cerrar"
+          aria-label={t("ne_close")}
         >
           <X className="h-4 w-4" />
         </button>
@@ -313,9 +311,12 @@ function EventDetailModal({
           </h3>
 
           <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-stone-600">
-              <Calendar className="h-4 w-4 text-[#c2410c] shrink-0" />
-              <span>{ev.dateLabel} · {ev.timeLabel}</span>
+            <div className="flex items-start gap-2 text-sm text-stone-600">
+              <Calendar className="h-4 w-4 text-[#c2410c] shrink-0 mt-0.5" />
+              <div>
+                <div>{ev.dateLabel}</div>
+                <div className="font-medium tabular-nums text-stone-700">{ev.timeLabel}</div>
+              </div>
             </div>
             <div className="flex items-center gap-2 text-sm text-stone-600">
               <MapPin className="h-4 w-4 text-[#c2410c] shrink-0" />
@@ -324,7 +325,7 @@ function EventDetailModal({
           </div>
 
           <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${spotsClass}`}>
-            {ev.spots === 1 ? "Queda 1 cupo" : `Quedan ${ev.spots} cupos`}
+            {ev.spots === 1 ? t("ne_spot_one") : t("ne_spot_many", { n: ev.spots })}
           </span>
 
           {ev.attendees.length > 0 && (
@@ -332,7 +333,7 @@ function EventDetailModal({
               <div className="flex items-center gap-1.5 mb-3">
                 <Users className="h-4 w-4 text-[#c2410c]" />
                 <span className="text-sm font-semibold text-stone-700">
-                  {ev.attendees.length} {ev.attendees.length === 1 ? "persona va" : "personas van"}
+                  {ev.attendees.length === 1 ? t("ne_attend_one") : t("ne_attend_many", { n: ev.attendees.length })}
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -360,7 +361,7 @@ function EventDetailModal({
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-[#faf6ef] text-sm font-semibold hover:bg-stone-700 transition cursor-pointer"
               >
                 <Calendar className="h-4 w-4" />
-                Agregar a Agenddi
+                {t("ne_add")}
               </button>
             ) : (
               <a
@@ -370,16 +371,16 @@ function EventDetailModal({
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-stone-900 text-[#faf6ef] text-sm font-semibold hover:bg-stone-700 transition cursor-pointer"
               >
                 <Calendar className="h-4 w-4" />
-                Agregar al calendario
+                {t("ne_add_cal")}
               </a>
             )}
             <button
               onClick={() => onShare(ev)}
               className="flex items-center justify-center px-4 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-100 transition cursor-pointer"
-              aria-label="Compartir"
+              aria-label={t("ne_share")}
             >
               <Share2 className="h-4 w-4" />
-              {copied === ev.id && <span className="ml-1.5 text-xs font-medium">¡Copiado!</span>}
+              {copied === ev.id && <span className="ml-1.5 text-xs font-medium">{t("ne_copied")}</span>}
             </button>
           </div>
         </div>
@@ -389,33 +390,48 @@ function EventDetailModal({
 }
 
 export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
-  const n = EVENTS.length;
+  const { t } = useT();
+  const [selectedHood, setSelectedHood] = useState<string>("all");
   const [current, setCurrent] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [selected, setSelected] = useState<DemoEvent | null>(null);
   const pauseRef = useRef(false);
 
+  const allHoods = useMemo(() => {
+    const set = new Set<string>();
+    EVENTS.forEach((e) => set.add(e.hood));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, []);
+
+  const filteredEvents = useMemo(
+    () => (selectedHood === "all" ? EVENTS : EVENTS.filter((e) => e.hood === selectedHood)),
+    [selectedHood]
+  );
+  const n = filteredEvents.length;
+
+  // Reset carousel when filter changes
+  useEffect(() => { setCurrent(0); }, [selectedHood]);
+
   const advance = useCallback(() => {
-    if (!pauseRef.current) setCurrent((c) => (c + 1) % n);
+    if (!pauseRef.current && n > 0) setCurrent((c) => (c + 1) % n);
   }, [n]);
 
   useEffect(() => {
-    const t = setInterval(advance, 4500);
-    return () => clearInterval(t);
+    const id = setInterval(advance, 4500);
+    return () => clearInterval(id);
   }, [advance]);
 
-  useEffect(() => {
-    pauseRef.current = selected !== null;
-  }, [selected]);
+  useEffect(() => { pauseRef.current = selected !== null; }, [selected]);
 
   function go(dir: 1 | -1) {
+    if (n === 0) return;
     setCurrent((c) => (c + dir + n) % n);
     pauseRef.current = true;
     setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000);
   }
 
   async function share(ev: DemoEvent) {
-    const text = `${ev.title} · ${ev.dateLabel} · ${ev.timeLabel} · ${ev.venue} · ${ev.hood}`;
+    const text = `${ev.title} · ${ev.dateLabel} ${ev.timeLabel} · ${ev.venue} · ${ev.hood}`;
     if (navigator.share) {
       try { await navigator.share({ title: ev.title, text }); return; } catch { /**/ }
     }
@@ -424,64 +440,89 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
     setTimeout(() => setCopied(null), 2000);
   }
 
+  // Number of cards shown — adapts to sidebar
+  const visibleCards = Math.min(3, Math.max(1, n));
+
   return (
     <>
-      <section className="bg-white rounded-3xl card-shadow p-6 sm:p-8">
-        <div className="flex items-center justify-between mb-5">
+      <section className="bg-white rounded-3xl card-shadow p-5 sm:p-7">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div>
             <div className="flex items-center gap-1.5 mb-1">
               <MapPin className="h-3.5 w-3.5 text-[#c2410c]" />
-              <span className="text-[10px] font-semibold text-[#c2410c] uppercase tracking-[0.2em]">Cerca tuyo</span>
+              <span className="text-[10px] font-semibold text-[#c2410c] uppercase tracking-[0.2em]">{t("ne_label")}</span>
             </div>
             <h3 className="text-2xl font-bold text-stone-900 leading-tight" style={{ fontFamily: "var(--font-serif)" }}>
-              Eventos cerca tuyo
+              {t("ne_title")}
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">{n} eventos en todo el país</p>
+            <p className="text-xs text-stone-500 mt-0.5">{t("ne_count", { n })}</p>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button onClick={() => go(-1)} aria-label="Anterior" className="text-stone-300 hover:text-stone-700 transition-colors cursor-pointer">
-              <ChevronLeft className="h-7 w-7" />
+          <div className="flex items-center gap-2">
+            <button onClick={() => go(-1)} aria-label={t("ne_prev")} className="text-stone-300 hover:text-stone-700 transition-colors cursor-pointer">
+              <ChevronLeft className="h-6 w-6" />
             </button>
-            <button onClick={() => go(1)} aria-label="Siguiente" className="text-stone-300 hover:text-stone-700 transition-colors cursor-pointer">
-              <ChevronRight className="h-7 w-7" />
+            <button onClick={() => go(1)} aria-label={t("ne_next")} className="text-stone-300 hover:text-stone-700 transition-colors cursor-pointer">
+              <ChevronRight className="h-6 w-6" />
             </button>
           </div>
         </div>
 
-        <div className="relative overflow-hidden">
-          <div className="flex gap-3">
-            {[0, 1, 2, 3].map((offset) => {
-              const e = EVENTS[(current + offset) % n];
-              return (
-                <div key={`${current}-${offset}`} className="shrink-0 w-[78%] sm:w-[45%] md:w-[30%]">
-                  <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
-                </div>
-              );
-            })}
-          </div>
-          <div className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 bg-gradient-to-l from-white via-white/70 to-transparent" />
-        </div>
-
-        {/* Limited dot indicators (10 dots representing chunks of the 100 events) */}
-        <div className="flex items-center justify-center gap-1.5 mt-5">
-          {Array.from({ length: 10 }, (_, i) => {
-            const groupSize = Math.ceil(n / 10);
-            const groupStart = i * groupSize;
-            const isActive = current >= groupStart && current < groupStart + groupSize;
-            return (
+        {/* Sidebar + Carousel */}
+        <div className="flex gap-3">
+          {/* Sidebar filter */}
+          <aside className="w-24 sm:w-32 shrink-0 max-h-[460px] overflow-y-auto pr-1 -ml-1 pl-1 space-y-0.5 border-r border-stone-100">
+            <button
+              onClick={() => setSelectedHood("all")}
+              className={`block w-full text-left px-2 py-1.5 text-[11px] sm:text-xs rounded-lg transition cursor-pointer truncate ${
+                selectedHood === "all"
+                  ? "bg-[#c2410c] text-white font-semibold"
+                  : "text-stone-600 hover:bg-stone-50"
+              }`}
+            >
+              {t("ne_all")}
+            </button>
+            {allHoods.map((hood) => (
               <button
-                key={i}
-                onClick={() => {
-                  setCurrent(groupStart);
-                  pauseRef.current = true;
-                  setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000);
-                }}
-                aria-label={`Grupo ${i + 1}`}
-                className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${isActive ? "w-5 bg-[#c2410c]" : "w-1.5 bg-stone-200 hover:bg-stone-300"}`}
-              />
-            );
-          })}
+                key={hood}
+                onClick={() => setSelectedHood(hood)}
+                title={hood}
+                className={`block w-full text-left px-2 py-1.5 text-[11px] sm:text-xs rounded-lg transition cursor-pointer truncate ${
+                  selectedHood === hood
+                    ? "bg-[#c2410c] text-white font-semibold"
+                    : "text-stone-600 hover:bg-stone-50"
+                }`}
+              >
+                {hood}
+              </button>
+            ))}
+          </aside>
+
+          {/* Carousel */}
+          <div className="flex-1 min-w-0 relative overflow-hidden">
+            {n === 0 ? (
+              <div className="text-sm text-stone-400 text-center py-12">No events.</div>
+            ) : (
+              <div className="flex gap-3">
+                {Array.from({ length: Math.min(4, n) }, (_, offset) => {
+                  const e = filteredEvents[(current + offset) % n];
+                  const widthClass = visibleCards === 1
+                    ? "w-full"
+                    : visibleCards === 2
+                    ? "w-[48%]"
+                    : "w-[78%] sm:w-[48%] md:w-[32%]";
+                  return (
+                    <div key={`${selectedHood}-${current}-${offset}`} className={`shrink-0 ${widthClass}`}>
+                      <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            {n > visibleCards && (
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-white via-white/70 to-transparent" />
+            )}
+          </div>
         </div>
       </section>
 
@@ -503,16 +544,9 @@ function EventCard({
 }) {
   return (
     <div className="rounded-2xl overflow-hidden bg-white card-shadow card-shadow-hover flex flex-col h-full">
-      <button className="text-left w-full cursor-pointer relative" onClick={onOpen}>
+      <button className="text-left w-full cursor-pointer" onClick={onOpen}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ev.image} alt={ev.title} className="w-full h-36 sm:h-40 object-cover" loading="lazy" />
-
-        {/* Neighborhood — top-LEFT prominent badge */}
-        <div className="absolute top-2 left-2 max-w-[80%]">
-          <span className="block px-2.5 py-1 rounded-full text-[10px] font-bold tracking-[0.1em] uppercase bg-[#faf6ef]/95 text-[#c2410c] shadow-sm truncate">
-            {ev.hood}
-          </span>
-        </div>
 
         <div className="px-4 pt-3 pb-2">
           <h4 className="font-bold text-stone-900 text-base leading-snug line-clamp-2" style={{ fontFamily: "var(--font-serif)" }}>
@@ -523,9 +557,12 @@ function EventCard({
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">{ev.city}</span>
           </div>
-          <div className="flex items-center gap-1 text-xs text-stone-400 mt-0.5">
-            <Calendar className="h-3.5 w-3.5 shrink-0" />
-            <span>{ev.dateLabel} · {ev.timeLabel}</span>
+          <div className="flex items-start gap-1 text-xs text-stone-400 mt-0.5">
+            <Calendar className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <div className="leading-tight">
+              <div>{ev.dateLabel}</div>
+              <div className="text-stone-500 font-medium tabular-nums">{ev.timeLabel}</div>
+            </div>
           </div>
         </div>
       </button>

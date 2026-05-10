@@ -19,6 +19,7 @@ import { NearbyEvents } from "@/components/NearbyEvents";
 import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 import type { DemoEvent } from "@/components/NearbyEvents";
+import { useT } from "@/lib/i18n";
 
 type FeedItem = SentEvent & { creator: Profile };
 type EventFilter = "public" | "private" | "mine";
@@ -265,6 +266,7 @@ export default function HomePage() {
   const { user, loading: userLoading, signOut } = useUser(false);
   const toast = useToast();
   const router = useRouter();
+  const { t } = useT();
 
   const [mainTab, setMainTab] = useState<MainTab>("discover");
   const [eventFilter, setEventFilter] = useState<EventFilter>("public");
@@ -481,19 +483,23 @@ export default function HomePage() {
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Main tab bar — underline style */}
         <div className="flex border-b border-stone-200">
-          {(["discover", "events", "calendar"] as const).map((t) => {
-            const labels = { discover: "Descubrí", events: "Eventos", calendar: "Calendario" };
+          {(["discover", "events", "calendar"] as const).map((tab) => {
+            const labels = {
+              discover: t("page_tab_discover"),
+              events: t("page_tab_events"),
+              calendar: t("page_tab_calendar"),
+            };
             return (
               <button
-                key={t}
-                onClick={() => setMainTab(t)}
+                key={tab}
+                onClick={() => setMainTab(tab)}
                 className={`flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
-                  mainTab === t
+                  mainTab === tab
                     ? "border-[#c2410c] text-[#c2410c]"
                     : "border-transparent text-stone-500 hover:text-stone-800"
                 }`}
               >
-                {labels[t]}
+                {labels[tab]}
               </button>
             );
           })}
@@ -510,14 +516,14 @@ export default function HomePage() {
         {/* ── Eventos tab ── */}
         {mainTab === "events" && (
           <>
-            <SearchBar value={query} onChange={setQuery} placeholder="Buscar eventos…" />
+            <SearchBar value={query} onChange={setQuery} placeholder={t("page_search_events")} />
 
             <div className="flex border-b border-stone-200">
               {(["public", "private", "mine"] as const).map((f) => {
                 const meta = {
-                  public: { label: "Públicos", count: publicItems.length },
-                  private: { label: "Privados", count: privateItems.length },
-                  mine: { label: "Míos", count: mineItems.length },
+                  public: { label: t("page_filter_public"), count: publicItems.length },
+                  private: { label: t("page_filter_private"), count: privateItems.length },
+                  mine: { label: t("page_filter_mine"), count: mineItems.length },
                 };
                 return (
                   <button
