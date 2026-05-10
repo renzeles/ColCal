@@ -68,6 +68,11 @@ export default function CreatePage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [color, setColor] = useState<EventColor>("zinc");
+  const [isOnline, setIsOnline] = useState(false);
+  const [capacity, setCapacity] = useState<number | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [showCoords, setShowCoords] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -167,6 +172,11 @@ export default function CreatePage() {
           setDescription(evToEdit.description ?? "");
           setImageUrl(evToEdit.image_url);
           setColor(evToEdit.color ?? "zinc");
+          setIsOnline(evToEdit.is_online ?? false);
+          setCapacity(evToEdit.capacity ?? null);
+          setLatitude(evToEdit.latitude ?? null);
+          setLongitude(evToEdit.longitude ?? null);
+          setShowCoords(!!(evToEdit.latitude || evToEdit.longitude));
           window.history.replaceState({}, "", "/create");
           setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
         }
@@ -206,6 +216,11 @@ export default function CreatePage() {
     setImageFile(null);
     setImageUrl(null);
     setColor("zinc");
+    setIsOnline(false);
+    setCapacity(null);
+    setLatitude(null);
+    setLongitude(null);
+    setShowCoords(false);
     if (imageInputRef.current) imageInputRef.current.value = "";
   }
 
@@ -226,6 +241,11 @@ export default function CreatePage() {
     setImageFile(null);
     setImageUrl(ev.image_url);
     setColor(ev.color ?? "zinc");
+    setIsOnline(ev.is_online ?? false);
+    setCapacity(ev.capacity ?? null);
+    setLatitude(ev.latitude ?? null);
+    setLongitude(ev.longitude ?? null);
+    setShowCoords(!!(ev.latitude || ev.longitude));
     if (imageInputRef.current) imageInputRef.current.value = "";
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -406,6 +426,10 @@ export default function CreatePage() {
             attendee_emails: attendeeEmails,
             image_url: finalImageUrl,
             color,
+            is_online: isOnline,
+            capacity: capacity,
+            latitude: isOnline ? null : latitude,
+            longitude: isOnline ? null : longitude,
           })
           .eq("id", editingId)
           .select()
@@ -438,6 +462,10 @@ export default function CreatePage() {
             provider_event_id: providerEventId,
             image_url: finalImageUrl,
             color,
+            is_online: isOnline,
+            capacity: capacity,
+            latitude: isOnline ? null : latitude,
+            longitude: isOnline ? null : longitude,
           })
           .select()
           .single();
@@ -715,6 +743,90 @@ export default function CreatePage() {
               placeholder="Ubicación (opcional)"
               className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             />
+
+            {/* Online toggle + capacity */}
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isOnline}
+                  onChange={(e) => setIsOnline(e.target.checked)}
+                  className="h-4 w-4 rounded accent-violet-600"
+                />
+                <span className="text-sm text-zinc-700">Evento online</span>
+              </label>
+              {!isOnline && (
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-zinc-500 whitespace-nowrap">Cupos máximos:</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={capacity ?? ""}
+                    onChange={(e) => setCapacity(e.target.value ? Number(e.target.value) : null)}
+                    placeholder="∞"
+                    className="w-20 px-2 py-1.5 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-center"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Coordinates — shown for physical events */}
+            {!isOnline && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowCoords((v) => !v)}
+                  className="text-xs text-violet-600 hover:text-violet-700 transition"
+                >
+                  {showCoords ? "− Ocultar coordenadas" : "+ Agregar coordenadas (búsqueda por cercanía)"}
+                </button>
+                {showCoords && (
+                  <div className="mt-2 space-y-2">
+                    <p className="text-xs text-zinc-400">
+                      Necesario para aparecer en "Eventos cerca tuyo".
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Latitud</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={latitude ?? ""}
+                          onChange={(e) => setLatitude(e.target.value ? Number(e.target.value) : null)}
+                          placeholder="-34.603722"
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-500 mb-1">Longitud</label>
+                        <input
+                          type="number"
+                          step="0.000001"
+                          value={longitude ?? ""}
+                          onChange={(e) => setLongitude(e.target.value ? Number(e.target.value) : null)}
+                          placeholder="-58.381592"
+                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!navigator.geolocation) return;
+                        navigator.geolocation.getCurrentPosition((pos) => {
+                          setLatitude(pos.coords.latitude);
+                          setLongitude(pos.coords.longitude);
+                        });
+                      }}
+                      className="text-xs text-violet-600 hover:text-violet-700 transition"
+                    >
+                      📍 Usar mi ubicación actual
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}

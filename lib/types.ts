@@ -35,6 +35,10 @@ export type SentEvent = {
   visibility: EventVisibility;
   image_url: string | null;
   color: EventColor;
+  latitude: number | null;
+  longitude: number | null;
+  capacity: number | null;
+  is_online: boolean;
   created_at: string;
 };
 

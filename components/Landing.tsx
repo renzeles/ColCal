@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Calendar, Globe, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
+import { NearbyEvents } from "@/components/NearbyEvents";
 import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 
@@ -114,6 +115,8 @@ export function Landing() {
             </ul>
           </section>
         )}
+
+        <NearbyEvents />
 
         <section className="grid sm:grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-zinc-200 p-5">
