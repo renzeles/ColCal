@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, Share2, UserCheck, UserMinus, UserPlus } from "lucide-react";
+import { Check, Share2, Sparkles, UserCheck, UserMinus, UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
@@ -25,6 +25,7 @@ export default function ContactsPage() {
   // Contact requests I've sent (pending)
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<Profile[]>([]);
 
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Profile[] | null>(null);
@@ -70,6 +71,22 @@ export default function ContactsPage() {
       );
       setMutuals(mutualIds.map((id) => profileMap.get(id)).filter((p): p is Profile => Boolean(p)));
       setFollowingIds(new Set(followingProfileIds));
+
+      // Load suggestions: profiles that aren't me, aren't already followed, no pending request
+      const exclude = new Set([
+        user.id,
+        ...followingProfileIds,
+        ...((requestRows ?? []).map((r) => r.to_id)),
+      ]);
+      const { data: suggestData } = await supabase
+        .from("profiles")
+        .select("*")
+        .neq("id", user.id)
+        .not("username", "is", null)
+        .limit(20);
+      const filtered = ((suggestData as Profile[]) ?? []).filter((p) => !exclude.has(p.id)).slice(0, 12);
+      setSuggestions(filtered);
+
       setLoading(false);
     })();
   }, [user]);
@@ -136,30 +153,10 @@ export default function ContactsPage() {
       });
 
       setPendingIds((prev) => new Set(prev).add(target.id));
+      setSuggestions((prev) => prev.filter((p) => p.id !== target.id));
       toast.show("success", `Solicitud enviada a ${target.full_name ?? target.username}.`);
     } catch {
       toast.show("error", "No se pudo enviar la solicitud.");
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function unfollow(target: Profile) {
-    if (!user || busyId) return;
-    setBusyId(target.id);
-    const supabase = createClient();
-    try {
-      const { error } = await supabase
-        .from("follows")
-        .delete()
-        .eq("follower_id", user.id)
-        .eq("following_id", target.id);
-      if (error) throw error;
-      setFollowingIds((prev) => { const n = new Set(prev); n.delete(target.id); return n; });
-      setFollowing((prev) => prev.filter((p) => p.id !== target.id));
-      setMutuals((prev) => prev.filter((p) => p.id !== target.id));
-    } catch {
-      toast.show("error", "No se pudo dejar de seguir.");
     } finally {
       setBusyId(null);
     }
@@ -208,6 +205,32 @@ export default function ContactsPage() {
 
         <SearchBar value={query} onChange={setQuery} placeholder="Buscar usuarios en Agenddi…" />
 
+        {/* Suggestions — horizontal scroll */}
+        {!isSearchMode && suggestions.length > 0 && (
+          <section className="bg-white rounded-2xl card-shadow p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="h-4 w-4 text-[#c2410c]" />
+              <h2
+                className="text-lg font-bold text-stone-900"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                Te proponemos
+              </h2>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 snap-x">
+              {suggestions.map((p) => (
+                <SuggestionCard
+                  key={p.id}
+                  profile={p}
+                  busy={busyId === p.id}
+                  pending={pendingIds.has(p.id)}
+                  onAdd={() => sendRequest(p)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {!isSearchMode && (
           <div className="flex gap-1 bg-white border border-zinc-200 rounded-xl p-1">
             <button
@@ -240,7 +263,7 @@ export default function ContactsPage() {
                   isPending={pendingIds.has(p.id)}
                   busy={busyId === p.id}
                   onAdd={() => sendRequest(p)}
-                  onUnfollow={() => unfollow(p)}
+                  onUnfollow={() => {}}
                 />
               ))}
             </ul>
@@ -261,7 +284,7 @@ export default function ContactsPage() {
                 isPending={pendingIds.has(p.id)}
                 busy={busyId === p.id}
                 onAdd={() => sendRequest(p)}
-                onUnfollow={() => unfollow(p)}
+                onUnfollow={() => {}}
               />
             ))}
           </ul>
@@ -279,7 +302,6 @@ function UserRow({
   isPending,
   busy,
   onAdd,
-  onUnfollow,
 }: {
   profile: Profile;
   isMutual: boolean;
@@ -289,36 +311,69 @@ function UserRow({
   onUnfollow: () => void;
 }) {
   return (
-    <li className="bg-white rounded-xl border border-zinc-200 p-3 flex items-center gap-3">
+    <li className="bg-white rounded-xl card-shadow p-3 flex items-center gap-3">
       <Link href={`/u/${p.username}`}>
         <Avatar src={p.avatar_url} name={p.full_name} size="md" />
       </Link>
       <Link href={`/u/${p.username}`} className="flex-1 min-w-0 hover:underline">
-        <div className="font-medium text-zinc-900 truncate">{p.full_name ?? p.username}</div>
-        <div className="text-xs text-zinc-500 truncate">@{p.username}</div>
+        <div className="font-medium text-stone-900 truncate">{p.full_name ?? p.username}</div>
+        <div className="text-xs text-stone-500 truncate">@{p.username}</div>
       </Link>
 
       {isMutual ? (
-        <button
-          onClick={onUnfollow}
-          disabled={busy}
-          className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60"
-        >
+        <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-default">
           <UserCheck className="h-3.5 w-3.5" /> Contacto
-        </button>
+        </span>
       ) : isPending ? (
-        <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-500 cursor-default">
+        <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-100 text-stone-500 cursor-default">
           <UserMinus className="h-3.5 w-3.5" /> Enviada
         </span>
       ) : (
         <button
           onClick={onAdd}
           disabled={busy}
-          className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-teal-700 text-white hover:bg-teal-800 transition disabled:opacity-60"
+          className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-900 text-[#faf6ef] hover:bg-stone-700 transition disabled:opacity-60 cursor-pointer"
         >
           <UserPlus className="h-3.5 w-3.5" /> Añadir
         </button>
       )}
     </li>
+  );
+}
+
+function SuggestionCard({
+  profile: p,
+  busy,
+  pending,
+  onAdd,
+}: {
+  profile: Profile;
+  busy: boolean;
+  pending: boolean;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="snap-start shrink-0 w-32 bg-[#faf6ef] rounded-2xl border border-stone-200 p-3 flex flex-col items-center text-center">
+      <Link href={`/u/${p.username}`} className="mb-2">
+        <Avatar src={p.avatar_url} name={p.full_name} size="lg" />
+      </Link>
+      <Link href={`/u/${p.username}`} className="text-xs font-semibold text-stone-900 truncate w-full hover:underline">
+        {p.full_name ?? p.username}
+      </Link>
+      <p className="text-[10px] text-stone-500 truncate w-full">@{p.username}</p>
+      {pending ? (
+        <span className="mt-2 w-full text-center text-[10px] font-semibold text-stone-500 px-2 py-1.5 rounded-full bg-stone-100">
+          Enviada
+        </span>
+      ) : (
+        <button
+          onClick={onAdd}
+          disabled={busy}
+          className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-stone-700 px-2 py-1.5 rounded-full transition cursor-pointer disabled:opacity-60"
+        >
+          + Añadir
+        </button>
+      )}
+    </div>
   );
 }
