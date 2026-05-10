@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Globe, Sparkles } from "lucide-react";
+import { Calendar, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
 import { NearbyEvents } from "@/components/NearbyEvents";
@@ -72,7 +72,7 @@ export function Landing() {
       <main className="max-w-3xl mx-auto px-4 py-10 sm:py-16 space-y-12">
         <section className="text-center">
           <h2 className="text-3xl sm:text-5xl font-bold text-zinc-900 tracking-tight">
-            Descubrí eventos
+            Descubrí
           </h2>
         </section>
 
@@ -117,36 +117,6 @@ export function Landing() {
         )}
 
         <NearbyEvents />
-
-        <section className="grid sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-zinc-200 p-5">
-            <div className="h-9 w-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mb-3">
-              <Calendar className="h-5 w-5" />
-            </div>
-            <h4 className="font-semibold text-zinc-900 mb-1">Sincronizá calendarios</h4>
-            <p className="text-sm text-zinc-600">
-              Conectá Google o Outlook y mandá invitaciones que se agregan al calendario del invitado.
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-zinc-200 p-5">
-            <div className="h-9 w-9 rounded-lg bg-violet-100 text-violet-600 flex items-center justify-center mb-3">
-              <Globe className="h-5 w-5" />
-            </div>
-            <h4 className="font-semibold text-zinc-900 mb-1">Publicá en tu perfil</h4>
-            <p className="text-sm text-zinc-600">
-              Compartí eventos públicos con un link y dejá que cualquiera los vea sin registrarse.
-            </p>
-          </div>
-          <div className="bg-white rounded-xl border border-zinc-200 p-5">
-            <div className="h-9 w-9 rounded-lg bg-amber-100 text-amber-600 flex items-center justify-center mb-3">
-              <Sparkles className="h-5 w-5" />
-            </div>
-            <h4 className="font-semibold text-zinc-900 mb-1">Descubrí gente</h4>
-            <p className="text-sm text-zinc-600">
-              Seguí a quien quieras y vas a ver sus próximos eventos en tu feed personal.
-            </p>
-          </div>
-        </section>
 
         <footer className="text-center text-xs text-zinc-400 pt-8">
           Agenddi · {new Date().getFullYear()}
