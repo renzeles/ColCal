@@ -23,12 +23,17 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
   const pathname = usePathname();
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-stone-100 sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <header className="bg-[#faf6ef]/90 backdrop-blur-md border-b border-stone-200/60 sticky top-0 z-10">
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
-        {/* Brand */}
-        <Link href="/" className="font-semibold text-stone-900 tracking-tight text-base shrink-0 select-none">
+        {/* Brand — serif wordmark */}
+        <Link
+          href="/"
+          className="font-display font-bold text-stone-900 tracking-tight text-xl shrink-0 select-none"
+          style={{ fontFamily: "var(--font-serif)" }}
+        >
           Agenddi
+          <span className="text-[#c2410c]">.</span>
         </Link>
 
         {/* Nav links — underline style */}
@@ -41,7 +46,7 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
                 href={href}
                 className={`text-sm font-medium pb-0.5 border-b-2 transition-colors whitespace-nowrap ${
                   active
-                    ? "border-teal-700 text-teal-700"
+                    ? "border-[#c2410c] text-[#c2410c]"
                     : "border-transparent text-stone-500 hover:text-stone-800"
                 }`}
               >

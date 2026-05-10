@@ -470,7 +470,7 @@ export default function HomePage() {
   if (!user) return <Landing />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br bg-stone-50">
+    <div className="min-h-screen bg-gradient-to-br bg-[#faf6ef]">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -489,7 +489,7 @@ export default function HomePage() {
                 onClick={() => setMainTab(t)}
                 className={`flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
                   mainTab === t
-                    ? "border-teal-700 text-teal-700"
+                    ? "border-[#c2410c] text-[#c2410c]"
                     : "border-transparent text-stone-500 hover:text-stone-800"
                 }`}
               >

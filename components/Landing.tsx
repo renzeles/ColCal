@@ -58,35 +58,49 @@ export function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-stone-50">
-      <header className="border-b border-stone-100 bg-white/95 backdrop-blur-md sticky top-0 z-10 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <div className="min-h-screen bg-[#faf6ef]">
+      <header className="border-b border-stone-200/60 bg-[#faf6ef]/90 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 h-14 flex items-center justify-between">
-          <span className="font-semibold text-stone-900 tracking-tight">Agenddi</span>
+          <span
+            className="font-bold text-stone-900 tracking-tight text-xl"
+            style={{ fontFamily: "var(--font-serif)" }}
+          >
+            Agenddi<span className="text-[#c2410c]">.</span>
+          </span>
           <Link
             href="/login"
-            className="px-5 h-9 rounded-full bg-stone-900 text-white text-sm font-medium hover:bg-stone-700 transition-colors flex items-center"
+            className="px-5 h-9 rounded-full bg-stone-900 text-[#faf6ef] text-sm font-medium hover:bg-stone-700 transition-colors flex items-center"
           >
             Iniciar sesión
           </Link>
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-5 py-14 sm:py-20 space-y-14">
-        <section className="text-center space-y-3">
-          <p className="text-xs font-semibold tracking-widest text-teal-700 uppercase">Agenddi</p>
-          <h2 className="text-4xl sm:text-6xl font-bold text-stone-900 tracking-tight leading-none">
+      <main className="max-w-3xl mx-auto px-5 py-14 sm:py-24 space-y-16">
+        <section className="text-center space-y-5">
+          <div className="mc-divider mx-auto max-w-[180px]">
+            <span className="text-[10px] font-semibold tracking-[0.25em] uppercase">Agenddi</span>
+          </div>
+          <h2
+            className="text-6xl sm:text-8xl font-bold text-stone-900 tracking-tight leading-[0.9]"
+            style={{ fontFamily: "var(--font-serif)", fontVariationSettings: "'opsz' 144" }}
+          >
             Descubrí
           </h2>
-          <p className="text-stone-500 text-base sm:text-lg max-w-sm mx-auto leading-relaxed">
-            Eventos cerca tuyo, en tu ciudad, con tu gente.
+          <p className="text-stone-600 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
+            Eventos cerca tuyo, en tu ciudad, con tu gente —
+            <span className="text-[#c2410c] font-medium"> sin esfuerzo</span>.
           </p>
         </section>
 
         {items.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-zinc-900 flex items-center gap-1.5">
-                <Globe className="h-4 w-4 text-teal-700" /> Eventos públicos
+              <h3
+                className="text-2xl font-bold text-stone-900 flex items-center gap-2"
+                style={{ fontFamily: "var(--font-serif)" }}
+              >
+                <Globe className="h-4 w-4 text-[#c2410c]" /> Eventos públicos
               </h3>
             </div>
             <ul className="grid sm:grid-cols-2 gap-3">

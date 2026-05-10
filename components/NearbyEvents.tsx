@@ -284,11 +284,16 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
       <section className="bg-white rounded-3xl card-shadow p-6 sm:p-8">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <div className="flex items-center gap-1.5 mb-0.5">
-              <MapPin className="h-3.5 w-3.5 text-teal-600" />
-              <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Cerca tuyo</span>
+            <div className="flex items-center gap-1.5 mb-1">
+              <MapPin className="h-3.5 w-3.5 text-[#c2410c]" />
+              <span className="text-[10px] font-semibold text-[#c2410c] uppercase tracking-[0.2em]">Cerca tuyo</span>
             </div>
-            <h3 className="text-xl font-bold text-zinc-900">Eventos cerca tuyo</h3>
+            <h3
+              className="text-2xl font-bold text-stone-900 leading-tight"
+              style={{ fontFamily: "var(--font-serif)" }}
+            >
+              Eventos cerca tuyo
+            </h3>
           </div>
 
           <div className="flex items-center gap-3">
