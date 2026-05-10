@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, CalendarPlus, Users, LogOut } from "lucide-react";
 import { Avatar } from "./Avatar";
+import { NotificationBell } from "./NotificationBell";
 
 type Props = {
   username: string | null;
@@ -47,6 +48,7 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
         </nav>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <NotificationBell />
           {username && (
             <Link
               href={`/u/${username}`}
