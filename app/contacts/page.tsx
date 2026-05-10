@@ -183,7 +183,7 @@ export default function ContactsPage() {
   const isSearchMode = searchResults !== null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bg-gradient-to-br bg-stone-50">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -196,7 +196,7 @@ export default function ContactsPage() {
           <h1 className="text-lg font-semibold text-zinc-900">Contactos</h1>
           <button
             onClick={handleInvite}
-            className="shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-full bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition"
+            className="shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-full bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition"
           >
             {inviteCopied ? (
               <><Check className="h-3.5 w-3.5" /> Copiado</>
@@ -314,7 +314,7 @@ function UserRow({
         <button
           onClick={onAdd}
           disabled={busy}
-          className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-60"
+          className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-teal-700 text-white hover:bg-teal-800 transition disabled:opacity-60"
         >
           <UserPlus className="h-3.5 w-3.5" /> Añadir
         </button>

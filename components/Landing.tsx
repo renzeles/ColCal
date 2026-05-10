@@ -58,13 +58,13 @@ export function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bg-gradient-to-br bg-stone-50">
       <header className="border-b border-zinc-200 bg-white/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-lg font-bold text-zinc-900">Agenddi</h1>
           <Link
             href="/login"
-            className="px-4 h-9 rounded-full bg-zinc-900 text-white text-sm font-semibold hover:bg-zinc-800 transition flex items-center"
+            className="px-4 h-9 rounded-full bg-stone-900 text-white text-sm font-semibold hover:bg-stone-800 transition flex items-center"
           >
             Iniciar sesión
           </Link>
@@ -82,7 +82,7 @@ export function Landing() {
           <section>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-zinc-900 flex items-center gap-1.5">
-                <Globe className="h-4 w-4 text-violet-600" /> Eventos públicos
+                <Globe className="h-4 w-4 text-teal-700" /> Eventos públicos
               </h3>
             </div>
             <ul className="grid sm:grid-cols-2 gap-3">

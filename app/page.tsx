@@ -79,7 +79,7 @@ function MiniCalendar({ events }: { events: FeedItem[] }) {
             <div
               key={i}
               className={`relative py-1.5 rounded-lg font-medium
-                ${isToday ? "bg-violet-600 text-white" : day ? "text-zinc-700" : ""}
+                ${isToday ? "bg-teal-700 text-white" : day ? "text-zinc-700" : ""}
               `}
             >
               {day}
@@ -166,7 +166,7 @@ function CalendarTab({ events }: { events: FeedItem[] }) {
                 onClick={() => day && setSelectedDay(day === selectedDay ? null : day)}
                 className={`relative py-2 rounded-xl font-medium transition cursor-pointer
                   ${!day ? "invisible" : ""}
-                  ${isSelected ? "bg-violet-600 text-white" : isToday ? "bg-violet-100 text-violet-700" : "text-zinc-700 hover:bg-zinc-100"}
+                  ${isSelected ? "bg-teal-700 text-white" : isToday ? "bg-teal-50 text-violet-700" : "text-zinc-700 hover:bg-zinc-100"}
                 `}
               >
                 {day}
@@ -470,7 +470,7 @@ export default function HomePage() {
   if (!user) return <Landing />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bg-gradient-to-br bg-stone-50">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -484,7 +484,7 @@ export default function HomePage() {
           <button
             onClick={() => setMainTab("discover")}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
-              mainTab === "discover" ? "bg-violet-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
+              mainTab === "discover" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
             <Compass className="h-4 w-4" /> Descubrí
@@ -492,7 +492,7 @@ export default function HomePage() {
           <button
             onClick={() => setMainTab("events")}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
-              mainTab === "events" ? "bg-violet-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
+              mainTab === "events" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
             <Globe className="h-4 w-4" /> Eventos
@@ -500,7 +500,7 @@ export default function HomePage() {
           <button
             onClick={() => setMainTab("calendar")}
             className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition cursor-pointer ${
-              mainTab === "calendar" ? "bg-violet-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
+              mainTab === "calendar" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
             <Calendar className="h-4 w-4" /> Calendario
@@ -524,7 +524,7 @@ export default function HomePage() {
               <button
                 onClick={() => setEventFilter("public")}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition whitespace-nowrap cursor-pointer ${
-                  eventFilter === "public" ? "bg-violet-600 text-white" : "text-zinc-600 hover:bg-zinc-100"
+                  eventFilter === "public" ? "bg-teal-700 text-white" : "text-zinc-600 hover:bg-zinc-100"
                 }`}
               >
                 <Globe className="h-4 w-4" /> Públicos ({publicItems.length})

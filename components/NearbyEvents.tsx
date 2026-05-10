@@ -110,7 +110,7 @@ function gCalLink(ev: DemoEvent) {
 }
 
 const AVATAR_COLORS = [
-  "bg-violet-500", "bg-sky-500", "bg-emerald-500",
+  "bg-teal-600", "bg-sky-500", "bg-emerald-500",
   "bg-amber-500", "bg-pink-500", "bg-orange-500", "bg-blue-500",
 ];
 
@@ -167,11 +167,11 @@ function EventDetailModal({
 
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-zinc-600">
-              <Calendar className="h-4 w-4 text-violet-500 shrink-0" />
+              <Calendar className="h-4 w-4 text-teal-600 shrink-0" />
               <span>{ev.dateLabel} · {ev.timeLabel}</span>
             </div>
             <div className="flex items-center gap-2 text-sm text-zinc-600">
-              <MapPin className="h-4 w-4 text-violet-500 shrink-0" />
+              <MapPin className="h-4 w-4 text-teal-600 shrink-0" />
               <span>{ev.venue} · {ev.location}</span>
             </div>
           </div>
@@ -183,7 +183,7 @@ function EventDetailModal({
           {ev.attendees.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 mb-3">
-                <Users className="h-4 w-4 text-violet-500" />
+                <Users className="h-4 w-4 text-teal-600" />
                 <span className="text-sm font-semibold text-zinc-700">
                   {ev.attendees.length} {ev.attendees.length === 1 ? "persona va" : "personas van"}
                 </span>
@@ -285,8 +285,8 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
         <div className="flex items-center justify-between mb-5">
           <div>
             <div className="flex items-center gap-1.5 mb-0.5">
-              <MapPin className="h-3.5 w-3.5 text-violet-500" />
-              <span className="text-xs font-semibold text-violet-600 uppercase tracking-wide">Cerca tuyo</span>
+              <MapPin className="h-3.5 w-3.5 text-teal-600" />
+              <span className="text-xs font-semibold text-teal-700 uppercase tracking-wide">Cerca tuyo</span>
             </div>
             <h3 className="text-xl font-bold text-zinc-900">Eventos cerca tuyo</h3>
           </div>
@@ -321,7 +321,7 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
               key={i}
               onClick={() => { setCurrent(i); pauseRef.current = true; setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000); }}
               aria-label={`Ir al evento ${i + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === current ? "w-5 bg-violet-500" : "w-1.5 bg-zinc-200 hover:bg-zinc-300"}`}
+              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${i === current ? "w-5 bg-teal-600" : "w-1.5 bg-zinc-200 hover:bg-zinc-300"}`}
             />
           ))}
         </div>

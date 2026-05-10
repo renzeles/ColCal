@@ -76,7 +76,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br bg-stone-50 flex flex-col items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-zinc-900 tracking-tight">Agenddi</h1>

@@ -22,7 +22,7 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
   ];
 
   return (
-    <header className="border-b border-zinc-200 bg-white/80 backdrop-blur sticky top-0 z-10">
+    <header className="border-b border-stone-200 bg-white/90 backdrop-blur sticky top-0 z-10">
       <div className="max-w-2xl mx-auto px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between gap-2">
         <nav className="flex items-center gap-0.5 sm:gap-1 min-w-0">
           {items.map((item) => {
@@ -36,7 +36,7 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
                 title={item.label}
                 className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition ${
                   active
-                    ? "bg-zinc-900 text-white"
+                    ? "bg-stone-900 text-white"
                     : "text-zinc-600 hover:bg-zinc-100"
                 }`}
               >

@@ -126,7 +126,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bg-gradient-to-br bg-stone-50">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -198,7 +198,7 @@ function NotificationItem({
             <button
               onClick={onAccept}
               disabled={busy}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-violet-600 text-white hover:bg-violet-700 transition disabled:opacity-60"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-700 text-white hover:bg-teal-800 transition disabled:opacity-60"
             >
               <Check className="h-3 w-3" /> Aceptar
             </button>
@@ -247,7 +247,7 @@ function NotificationItem({
   if (notif.type === "event_invite") {
     return (
       <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+        <div className="h-10 w-10 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
           <Bell className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
