@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Calendar, Globe } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar } from "@/components/Avatar";
@@ -22,6 +23,7 @@ function formatDate(iso: string) {
 }
 
 export function Landing() {
+  const router = useRouter();
   const [items, setItems] = useState<FeedItem[]>([]);
 
   useEffect(() => {
@@ -116,7 +118,7 @@ export function Landing() {
           </section>
         )}
 
-        <NearbyEvents />
+        <NearbyEvents onAdd={() => router.push("/login")} />
 
         <footer className="text-center text-xs text-zinc-400 pt-8">
           Agenddi · {new Date().getFullYear()}
