@@ -126,7 +126,7 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br bg-[#faf6ef]">
+    <div className="min-h-screen bg-gradient-to-br bakery-bg">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -136,8 +136,8 @@ export default function NotificationsPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center gap-3">
-          <Bell className="h-5 w-5 text-[#c2410c]" />
-          <h1 className="text-3xl font-bold text-stone-900" style={{ fontFamily: "var(--font-serif)" }}>
+          <Bell className="h-5 w-5 text-[#9a3c2b]" />
+          <h1 className="text-3xl font-bold text-stone-900" >
             Notificaciones
           </h1>
         </div>
@@ -200,7 +200,7 @@ function NotificationItem({
             <button
               onClick={onAccept}
               disabled={busy}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-teal-700 text-white hover:bg-teal-800 transition disabled:opacity-60"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#8b5a3c] text-white hover:bg-[#6b4423] transition disabled:opacity-60"
             >
               <Check className="h-3 w-3" /> Aceptar
             </button>
@@ -249,7 +249,7 @@ function NotificationItem({
   if (notif.type === "event_invite") {
     return (
       <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center shrink-0">
+        <div className="h-10 w-10 rounded-full bg-[#fbf6ee] text-[#8b5a3c] flex items-center justify-center shrink-0">
           <Bell className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">

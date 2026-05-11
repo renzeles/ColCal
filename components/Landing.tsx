@@ -60,19 +60,18 @@ export function Landing() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#faf6ef]">
-      <header className="border-b border-stone-200/60 bg-[#faf6ef]/90 backdrop-blur-md sticky top-0 z-10">
+    <div className="min-h-screen bakery-bg">
+      <header className="border-b border-stone-200/60 bakery-bg/90 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-3xl mx-auto px-5 h-14 flex items-center justify-between">
           <span
             className="font-bold text-stone-900 tracking-tight text-xl"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
-            Agenddi<span className="text-[#c2410c]">.</span>
+                      >
+            Agenddi<span className="text-[#9a3c2b]">.</span>
           </span>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setLang(lang === "en" ? "es" : "en")}
-              className="text-[10px] font-bold tracking-wider text-stone-500 hover:text-[#c2410c] transition-colors px-1.5 py-1 rounded cursor-pointer"
+              className="text-[10px] font-bold tracking-wider text-stone-500 hover:text-[#9a3c2b] transition-colors px-1.5 py-1 rounded cursor-pointer"
               aria-label="Language"
             >
               {lang.toUpperCase()}
@@ -94,13 +93,12 @@ export function Landing() {
           </div>
           <h2
             className="text-6xl sm:text-8xl font-bold text-stone-900 tracking-tight leading-[0.9]"
-            style={{ fontFamily: "var(--font-serif)", fontVariationSettings: "'opsz' 144" }}
-          >
+                      >
             {t("landing_hero")}
           </h2>
           <p className="text-stone-600 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
             {t("landing_subtitle")}
-            <span className="text-[#c2410c] font-medium"> {t("landing_subtitle_accent")}</span>.
+            <span className="text-[#9a3c2b] font-medium"> {t("landing_subtitle_accent")}</span>.
           </p>
         </section>
 
@@ -109,9 +107,8 @@ export function Landing() {
             <div className="flex items-center justify-between mb-4">
               <h3
                 className="text-2xl font-bold text-stone-900 flex items-center gap-2"
-                style={{ fontFamily: "var(--font-serif)" }}
-              >
-                <Globe className="h-4 w-4 text-[#c2410c]" /> {t("landing_public_events")}
+                              >
+                <Globe className="h-4 w-4 text-[#9a3c2b]" /> {t("landing_public_events")}
               </h3>
             </div>
             <ul className="grid sm:grid-cols-2 gap-3">

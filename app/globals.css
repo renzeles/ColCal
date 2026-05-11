@@ -1,28 +1,42 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "DM Sans", ui-sans-serif, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "Fraunces", "Cooper", Georgia, "Times New Roman", serif;
+  --font-sans: "Manrope", system-ui, -apple-system, sans-serif;
 
-  /* Mid-century palette */
-  --color-cream: #faf6ef;
-  --color-cream-darker: #f2ebdd;
-  --color-terracotta: #c2410c;
-  --color-mustard: #ca8a04;
-  --color-deep-teal: #0f766e;
-  --color-ink: #1c1917;
+  /* Danish bakery palette */
+  --color-wheat: #f5efe2;          /* warm cream wheat background */
+  --color-wheat-soft: #fbf6ee;     /* lighter cream */
+  --color-wheat-darker: #ebe1cc;   /* deeper wheat */
+  --color-caramel: #8b5a3c;        /* primary accent — caramel/coffee */
+  --color-caramel-dark: #6b4423;   /* deeper coffee — for hover */
+  --color-caramel-light: #d4b896;  /* light caramel — for soft fills */
+  --color-cherry: #9a3c2b;         /* pop accent — cherry/jam */
+  --color-sage: #8a9b6e;           /* secondary accent — herb */
+  --color-ink: #2a1f17;            /* dark warm brown — text */
 }
 
 html, body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: var(--color-cream);
+  background: var(--color-wheat);
   color: var(--color-ink);
+  letter-spacing: -0.005em;
 }
 
-/* Iframe-safe input sizing on mobile */
+/* Global rule: hand cursor on all interactive elements (buttons, links, role=button) */
+button:not(:disabled),
+a,
+[role="button"]:not([aria-disabled="true"]),
+label[for],
+summary {
+  cursor: pointer;
+}
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
 @media (max-width: 640px) {
   input, textarea, select {
     font-size: 16px !important;
@@ -34,42 +48,59 @@ html, body {
   word-break: break-word;
 }
 
-/* Refined scrollbar */
+/* Warm bakery scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #d6c9b8; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #a8997f; }
-* { scrollbar-width: thin; scrollbar-color: #d6c9b8 transparent; }
+::-webkit-scrollbar-thumb { background: #d4b896; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #8b5a3c; }
+* { scrollbar-width: thin; scrollbar-color: #d4b896 transparent; }
 
-/* Warm card shadows (subtle warm undertone instead of pure black) */
+/* Warm shadows — coffee/wheat tinted */
 .card-shadow {
-  box-shadow: 0 1px 3px rgba(120, 100, 70, 0.08), 0 1px 2px rgba(120, 100, 70, 0.05);
+  box-shadow:
+    0 1px 2px rgba(107, 68, 35, 0.05),
+    0 4px 16px rgba(107, 68, 35, 0.06);
 }
-.card-shadow-hover { transition: box-shadow .2s ease; }
+.card-shadow-hover { transition: all .25s ease; }
 .card-shadow-hover:hover {
-  box-shadow: 0 6px 18px rgba(120, 100, 70, 0.12), 0 2px 6px rgba(120, 100, 70, 0.06);
+  box-shadow:
+    0 2px 4px rgba(107, 68, 35, 0.08),
+    0 12px 28px rgba(107, 68, 35, 0.10);
+  transform: translateY(-2px);
 }
 
-/* Editorial display */
+/* Bakery headline style — heavy Manrope */
 .font-display {
-  font-family: var(--font-serif);
-  font-feature-settings: "ss01", "ss02";
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.025em;
 }
 
-/* Mid-century thin geometric divider */
-.mc-divider {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  color: #c2410c; /* terracotta */
+.font-display-tight {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  letter-spacing: -0.03em;
 }
-.mc-divider::before,
-.mc-divider::after {
-  content: "";
-  flex: 1;
-  max-width: 3rem;
-  height: 1px;
-  background: currentColor;
-  opacity: 0.5;
+
+/* Cleaner modern background — subtle warm gradient instead of dot pattern */
+.bakery-bg {
+  background:
+    radial-gradient(ellipse at top, rgba(255, 255, 255, 0.6) 0%, transparent 60%),
+    var(--color-wheat);
 }
+
+/* Modern hero label */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--color-caramel);
+}
+
+/* Modern button — refined hover */
+.btn-modern {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-modern:hover { transform: translateY(-1px); }
+.btn-modern:active { transform: translateY(0); }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, MapPin, Share2, Users, X } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, ExternalLink, MapPin, RotateCcw, Search, Share2, Users, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
+import { DatePicker } from "./DatePicker";
 
 export type DemoEvent = {
   id: string;
@@ -288,7 +289,7 @@ function EventDetailModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
       <div
-        className="relative bg-[#faf6ef] w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+        className="relative bg-[#fbf6ee] w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -303,24 +304,35 @@ function EventDetailModal({
         </button>
 
         <div className="p-6 space-y-4">
-          <h3
-            className="text-2xl font-bold text-stone-900 leading-tight"
-            style={{ fontFamily: "var(--font-serif)" }}
-          >
+          <h3 className="text-2xl font-bold text-stone-900 leading-tight font-extrabold tracking-tight">
             {ev.title}
           </h3>
 
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             <div className="flex items-start gap-2 text-sm text-stone-600">
-              <Calendar className="h-4 w-4 text-[#c2410c] shrink-0 mt-0.5" />
+              <Calendar className="h-4 w-4 text-[#8b5a3c] shrink-0 mt-0.5" />
               <div>
                 <div>{ev.dateLabel}</div>
-                <div className="font-medium tabular-nums text-stone-700">{ev.timeLabel}</div>
+                <div className="font-semibold tabular-nums text-stone-800">{ev.timeLabel}</div>
               </div>
             </div>
-            <div className="flex items-center gap-2 text-sm text-stone-600">
-              <MapPin className="h-4 w-4 text-[#c2410c] shrink-0" />
-              <span>{ev.venue} · {ev.hood}, {ev.city}</span>
+
+            {/* Address — venue + hood + city */}
+            <div className="flex items-start gap-2 text-sm text-stone-600">
+              <MapPin className="h-4 w-4 text-[#8b5a3c] shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-stone-800">{ev.venue}</div>
+                <div className="text-stone-500 text-xs">{ev.hood} · {ev.city}, Argentina</div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ev.venue}, ${ev.hood}, ${ev.city}, Argentina`)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 mt-1.5 text-xs font-semibold text-[#8b5a3c] hover:text-[#6b4423] transition cursor-pointer"
+                >
+                  {t("open_in_maps")}
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
             </div>
           </div>
 
@@ -331,7 +343,7 @@ function EventDetailModal({
           {ev.attendees.length > 0 && (
             <div>
               <div className="flex items-center gap-1.5 mb-3">
-                <Users className="h-4 w-4 text-[#c2410c]" />
+                <Users className="h-4 w-4 text-[#8b5a3c]" />
                 <span className="text-sm font-semibold text-stone-700">
                   {ev.attendees.length === 1 ? t("ne_attend_one") : t("ne_attend_many", { n: ev.attendees.length })}
                 </span>
@@ -389,32 +401,55 @@ function EventDetailModal({
   );
 }
 
+// Diacritic-insensitive normalizer
+const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+function formatPickedDate(iso: string) {
+  if (!iso) return "";
+  const d = new Date(iso + "T00:00:00");
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
 export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
   const { t } = useT();
-  const [selectedHood, setSelectedHood] = useState<string>("all");
+  const [query, setQuery] = useState("");
+  const [pickedDate, setPickedDate] = useState("");
   const [current, setCurrent] = useState(0);
   const [copied, setCopied] = useState<string | null>(null);
   const [selected, setSelected] = useState<DemoEvent | null>(null);
   const pauseRef = useRef(false);
 
-  const allHoods = useMemo(() => {
-    const set = new Set<string>();
-    EVENTS.forEach((e) => set.add(e.hood));
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, []);
+  const filteredEvents = useMemo(() => {
+    const q = norm(query.trim());
+    return EVENTS.filter((e) => {
+      if (q) {
+        const matches =
+          norm(e.title).includes(q) ||
+          norm(e.venue).includes(q) ||
+          norm(e.hood).includes(q) ||
+          norm(e.city).includes(q);
+        if (!matches) return false;
+      }
+      if (pickedDate && e.startISO.slice(0, 10) !== pickedDate) return false;
+      return true;
+    });
+  }, [query, pickedDate]);
 
-  const filteredEvents = useMemo(
-    () => (selectedHood === "all" ? EVENTS : EVENTS.filter((e) => e.hood === selectedHood)),
-    [selectedHood]
-  );
   const n = filteredEvents.length;
+  const total = EVENTS.length;
+  const isFiltering = query.trim().length > 0 || pickedDate.length > 0;
 
   // Reset carousel when filter changes
-  useEffect(() => { setCurrent(0); }, [selectedHood]);
+  useEffect(() => { setCurrent(0); }, [query, pickedDate]);
 
   const advance = useCallback(() => {
-    if (!pauseRef.current && n > 0) setCurrent((c) => (c + 1) % n);
-  }, [n]);
+    if (!pauseRef.current && n > 0 && !isFiltering) setCurrent((c) => (c + 1) % n);
+  }, [n, isFiltering]);
+
+  function clearAll() {
+    setQuery("");
+    setPickedDate("");
+  }
 
   useEffect(() => {
     const id = setInterval(advance, 4500);
@@ -440,96 +475,122 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  // Number of cards shown — adapts to sidebar
-  const visibleCards = Math.min(3, Math.max(1, n));
-
   return (
     <>
-      <section className="bg-white rounded-3xl card-shadow p-5 sm:p-7">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <div className="flex items-center gap-1.5 mb-1">
-              <MapPin className="h-3.5 w-3.5 text-[#c2410c]" />
-              <span className="text-[10px] font-semibold text-[#c2410c] uppercase tracking-[0.2em]">{t("ne_label")}</span>
+      <section className="bg-white rounded-[28px] card-shadow p-6 sm:p-8">
+        <div className="flex items-end justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 mb-2">
+              <MapPin className="h-3 w-3 text-[#8b5a3c]" strokeWidth={3} />
+              <span className="eyebrow">{t("ne_label")}</span>
             </div>
-            <h3 className="text-2xl font-bold text-stone-900 leading-tight" style={{ fontFamily: "var(--font-serif)" }}>
+            <h3 className="text-3xl sm:text-[34px] text-stone-900 leading-[1.05] font-extrabold tracking-tighter">
               {t("ne_title")}
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">{t("ne_count", { n })}</p>
+            <p className="text-sm text-stone-500 mt-1.5 font-medium">
+              {isFiltering ? t("ne_showing", { n, total }) : t("ne_count", { n })}
+            </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => go(-1)} aria-label={t("ne_prev")} className="text-stone-300 hover:text-stone-700 transition-colors cursor-pointer">
-              <ChevronLeft className="h-6 w-6" />
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => go(-1)} aria-label={t("ne_prev")} className="h-9 w-9 rounded-full bg-stone-100 hover:bg-[#8b5a3c] text-stone-500 hover:text-white flex items-center justify-center transition cursor-pointer btn-modern">
+              <ChevronLeft className="h-5 w-5" />
             </button>
-            <button onClick={() => go(1)} aria-label={t("ne_next")} className="text-stone-300 hover:text-stone-700 transition-colors cursor-pointer">
-              <ChevronRight className="h-6 w-6" />
+            <button onClick={() => go(1)} aria-label={t("ne_next")} className="h-9 w-9 rounded-full bg-stone-100 hover:bg-[#8b5a3c] text-stone-500 hover:text-white flex items-center justify-center transition cursor-pointer btn-modern">
+              <ChevronRight className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {/* Sidebar + Carousel */}
-        <div className="flex gap-3">
-          {/* Sidebar filter */}
-          <aside className="w-24 sm:w-32 shrink-0 max-h-[460px] overflow-y-auto pr-1 -ml-1 pl-1 space-y-0.5 border-r border-stone-100">
+        {/* Search + date picker + single clear */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-[#8b5a3c]" strokeWidth={2.5} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("ne_search")}
+              className="w-full rounded-2xl bg-stone-50 border border-stone-200 text-[15px] text-stone-900 font-medium focus:outline-none focus:border-[#8b5a3c] focus:bg-white focus:ring-4 focus:ring-[#8b5a3c]/8 transition-all placeholder:text-stone-400 placeholder:font-normal"
+              style={{ paddingLeft: "3.25rem", paddingRight: "1rem", height: "3.25rem" }}
+            />
+          </div>
+
+          <div className="flex gap-2">
+            <DatePicker value={pickedDate} onChange={setPickedDate} placeholder="Date" />
+            <ClearButton active={isFiltering} onClick={clearAll} label={t("ne_clear")} />
+          </div>
+        </div>
+
+        {/* Carousel or empty state */}
+        {n === 0 ? (
+          <div className="text-center py-12 px-4">
+            <div className="text-3xl mb-3">🥐</div>
+            <p className="text-sm text-stone-600">
+              {t("ne_no_results")}{" "}
+              {query && <span className="font-bold text-[#8b5a3c]">&ldquo;{query}&rdquo;</span>}
+              {query && pickedDate && " · "}
+              {pickedDate && (
+                <span className="font-bold text-[#8b5a3c]">{formatPickedDate(pickedDate)}</span>
+              )}
+            </p>
             <button
-              onClick={() => setSelectedHood("all")}
-              className={`block w-full text-left px-2 py-1.5 text-[11px] sm:text-xs rounded-lg transition cursor-pointer truncate ${
-                selectedHood === "all"
-                  ? "bg-[#c2410c] text-white font-semibold"
-                  : "text-stone-600 hover:bg-stone-50"
-              }`}
+              onClick={clearAll}
+              className="mt-4 inline-flex items-center gap-1.5 text-xs font-bold text-[#8b5a3c] hover:text-[#6b4423] uppercase tracking-wider cursor-pointer"
             >
-              {t("ne_all")}
+              {t("ne_clear")} →
             </button>
-            {allHoods.map((hood) => (
-              <button
-                key={hood}
-                onClick={() => setSelectedHood(hood)}
-                title={hood}
-                className={`block w-full text-left px-2 py-1.5 text-[11px] sm:text-xs rounded-lg transition cursor-pointer truncate ${
-                  selectedHood === hood
-                    ? "bg-[#c2410c] text-white font-semibold"
-                    : "text-stone-600 hover:bg-stone-50"
-                }`}
-              >
-                {hood}
-              </button>
-            ))}
-          </aside>
-
-          {/* Carousel */}
-          <div className="flex-1 min-w-0 relative overflow-hidden">
-            {n === 0 ? (
-              <div className="text-sm text-stone-400 text-center py-12">No events.</div>
-            ) : (
-              <div className="flex gap-3">
-                {Array.from({ length: Math.min(4, n) }, (_, offset) => {
-                  const e = filteredEvents[(current + offset) % n];
-                  const widthClass = visibleCards === 1
-                    ? "w-full"
-                    : visibleCards === 2
-                    ? "w-[48%]"
-                    : "w-[78%] sm:w-[48%] md:w-[32%]";
-                  return (
-                    <div key={`${selectedHood}-${current}-${offset}`} className={`shrink-0 ${widthClass}`}>
-                      <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {n > visibleCards && (
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-white via-white/70 to-transparent" />
-            )}
           </div>
-        </div>
+        ) : isFiltering ? (
+          // Filtered view: grid of all matches (more useful when searching)
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto -mx-1 px-1">
+            {filteredEvents.map((e) => (
+              <div key={e.id}>
+                <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Default view: rotating carousel
+          <div className="relative overflow-hidden">
+            <div className="flex gap-3">
+              {[0, 1, 2, 3].map((offset) => {
+                const e = filteredEvents[(current + offset) % n];
+                return (
+                  <div key={`${current}-${offset}`} className="shrink-0 w-[78%] sm:w-[45%] md:w-[30%]">
+                    <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 bg-gradient-to-l from-white via-white/70 to-transparent" />
+          </div>
+        )}
       </section>
 
       {selected && (
         <EventDetailModal ev={selected} onClose={() => setSelected(null)} copied={copied} onShare={share} onAdd={onAdd} />
       )}
     </>
+  );
+}
+
+function ClearButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!active}
+      style={{ height: "3.25rem", width: "3.25rem" }}
+      className={`shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all cursor-pointer btn-modern ${
+        active
+          ? "bg-[#fbf6ee] border-[#8b5a3c]/30 text-[#8b5a3c] hover:bg-white hover:border-[#8b5a3c] hover:rotate-[-90deg]"
+          : "bg-stone-50 border-stone-200 text-stone-300 cursor-not-allowed opacity-60"
+      }`}
+      aria-label={label}
+      title={label}
+    >
+      <RotateCcw className="h-[18px] w-[18px]" strokeWidth={2.5} />
+    </button>
   );
 }
 

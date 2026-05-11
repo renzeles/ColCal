@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Pencil, Trash2, Globe, Lock, ImagePlus, X, Calendar, MapPin, Check } from "lucide-react";
+import { Pencil, Trash2, Globe, Lock, ImagePlus, X, Calendar, MapPin, Check, Clock } from "lucide-react";
+import { DatePicker } from "@/components/DatePicker";
 import { createClient } from "@/lib/supabase/client";
 import { createGCalEvent, updateGCalEvent, deleteGCalEvent } from "@/lib/google-calendar";
 import { createMSEvent, updateMSEvent, deleteMSEvent } from "@/lib/microsoft-calendar";
@@ -545,7 +546,7 @@ export default function CreatePage() {
   const calendarRequired = hasOAuthProvider && (visibility === "private" || attendees.length > 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bakery-bg">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -573,9 +574,9 @@ export default function CreatePage() {
           </section>
         )}
 
-        <section className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-zinc-900">
+        <section className="bg-white rounded-3xl card-shadow p-6 sm:p-7">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-2xl font-extrabold text-stone-900 tracking-tight">
               {editingId ? "Editar evento" : "Nuevo evento"}
             </h2>
             {editingId && (
@@ -626,28 +627,55 @@ export default function CreatePage() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Título"
               required
-              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
             />
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Inicio</label>
-                <input
-                  type="datetime-local"
-                  value={startAt}
-                  onChange={(e) => setStartAt(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            {/* Start date + time */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wider">Inicio</label>
+              <div className="flex gap-2">
+                <DatePicker
+                  value={startAt ? startAt.split("T")[0] : ""}
+                  onChange={(d) => setStartAt(d ? `${d}T${(startAt.split("T")[1] || "12:00").slice(0,5)}` : "")}
+                  placeholder="Date"
                 />
+                <div className="relative">
+                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8b5a3c] pointer-events-none" strokeWidth={2.5} />
+                  <input
+                    type="time"
+                    value={startAt ? (startAt.split("T")[1] || "").slice(0,5) : ""}
+                    onChange={(e) => {
+                      const date = startAt.split("T")[0] || new Date().toISOString().slice(0,10);
+                      setStartAt(`${date}T${e.target.value}`);
+                    }}
+                    style={{ height: "3.25rem" }}
+                    className="pl-11 pr-4 rounded-2xl bg-stone-50 border-2 border-stone-200 text-sm font-bold text-stone-800 tabular-nums focus:outline-none focus:border-[#8b5a3c] focus:bg-white transition tracking-tight"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs text-zinc-500 mb-1">Fin</label>
-                <input
-                  type="datetime-local"
-                  value={endAt}
-                  onChange={(e) => setEndAt(e.target.value)}
-                  required
-                  className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+            </div>
+
+            {/* End date + time */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wider">Fin</label>
+              <div className="flex gap-2">
+                <DatePicker
+                  value={endAt ? endAt.split("T")[0] : ""}
+                  onChange={(d) => setEndAt(d ? `${d}T${(endAt.split("T")[1] || "13:00").slice(0,5)}` : "")}
+                  placeholder="Date"
                 />
+                <div className="relative">
+                  <Clock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8b5a3c] pointer-events-none" strokeWidth={2.5} />
+                  <input
+                    type="time"
+                    value={endAt ? (endAt.split("T")[1] || "").slice(0,5) : ""}
+                    onChange={(e) => {
+                      const date = endAt.split("T")[0] || startAt.split("T")[0] || new Date().toISOString().slice(0,10);
+                      setEndAt(`${date}T${e.target.value}`);
+                    }}
+                    style={{ height: "3.25rem" }}
+                    className="pl-11 pr-4 rounded-2xl bg-stone-50 border-2 border-stone-200 text-sm font-bold text-stone-800 tabular-nums focus:outline-none focus:border-[#8b5a3c] focus:bg-white transition tracking-tight"
+                  />
+                </div>
               </div>
             </div>
 
@@ -741,7 +769,7 @@ export default function CreatePage() {
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Ubicación (opcional)"
-              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
             />
 
             {/* Online toggle + capacity */}
@@ -764,7 +792,7 @@ export default function CreatePage() {
                     value={capacity ?? ""}
                     onChange={(e) => setCapacity(e.target.value ? Number(e.target.value) : null)}
                     placeholder="∞"
-                    className="w-20 px-2 py-1.5 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm text-center"
+                    className="w-20 px-2 py-1.5 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm text-center"
                   />
                 </div>
               )}
@@ -794,7 +822,7 @@ export default function CreatePage() {
                           value={latitude ?? ""}
                           onChange={(e) => setLatitude(e.target.value ? Number(e.target.value) : null)}
                           placeholder="-34.603722"
-                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
                         />
                       </div>
                       <div>
@@ -805,7 +833,7 @@ export default function CreatePage() {
                           value={longitude ?? ""}
                           onChange={(e) => setLongitude(e.target.value ? Number(e.target.value) : null)}
                           placeholder="-58.381592"
-                          className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                          className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
                         />
                       </div>
                     </div>
@@ -832,7 +860,7 @@ export default function CreatePage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descripción (opcional)"
               rows={3}
-              className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm resize-none"
             />
 
             <input
@@ -931,15 +959,10 @@ export default function CreatePage() {
             <button
               type="submit"
               disabled={submitting || (calendarRequired && needsCalendarConnect)}
-              className="w-full h-11 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-full h-13 rounded-2xl bg-stone-900 text-[#faf6ef] font-extrabold text-base hover:bg-stone-700 transition disabled:opacity-60 tracking-tight btn-modern"
+              style={{ height: "3.25rem" }}
             >
-              {submitting
-                ? "Guardando…"
-                : editingId
-                ? "Guardar cambios"
-                : visibility === "public"
-                ? "Publicar evento"
-                : "Enviar evento"}
+              {submitting ? "..." : editingId ? "Guardar" : "Crear"}
             </button>
             {calendarRequired && needsCalendarConnect && (
               <p className="text-xs text-amber-600 text-center">

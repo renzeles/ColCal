@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { Avatar } from "./Avatar";
 import { NotificationBell } from "./NotificationBell";
@@ -15,51 +14,23 @@ type Props = {
 };
 
 export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
-  const pathname = usePathname();
-  const { t, lang, setLang } = useT();
-
-  const NAV_ITEMS = [
-    { href: "/", label: t("nav_home") },
-    { href: "/create", label: t("nav_create") },
-    { href: "/contacts", label: t("nav_contacts") },
-  ];
+  const { lang, setLang, t } = useT();
 
   return (
-    <header className="bg-[#faf6ef]/90 backdrop-blur-md border-b border-stone-200/60 sticky top-0 z-10">
+    <header className="bg-[#f5efe2]/95 backdrop-blur-md border-b border-[#8b5a3c]/15 sticky top-0 z-10">
       <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
         <Link
           href="/"
-          className="font-bold text-stone-900 tracking-tight text-xl shrink-0 select-none"
-          style={{ fontFamily: "var(--font-serif)" }}
+          className="font-extrabold text-[#2a1f17] tracking-tight text-2xl shrink-0 select-none"
         >
-          Agenddi<span className="text-[#c2410c]">.</span>
+          Agenddi<span className="text-[#9a3c2b]">.</span>
         </Link>
 
-        <nav className="flex items-center gap-5">
-          {NAV_ITEMS.map(({ href, label }) => {
-            const active = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`text-sm font-medium pb-0.5 border-b-2 transition-colors whitespace-nowrap ${
-                  active
-                    ? "border-[#c2410c] text-[#c2410c]"
-                    : "border-transparent text-stone-500 hover:text-stone-800"
-                }`}
-              >
-                {label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Language toggle */}
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => setLang(lang === "en" ? "es" : "en")}
-            className="text-[10px] font-bold tracking-wider text-stone-500 hover:text-[#c2410c] transition-colors px-1.5 py-1 rounded cursor-pointer"
+            className="text-[10px] font-bold tracking-wider text-[#8b5a3c]/70 hover:text-[#8b5a3c] transition-colors px-1.5 py-1 rounded cursor-pointer"
             aria-label="Language"
             title={lang === "en" ? "Switch to Spanish" : "Cambiar a inglés"}
           >
@@ -67,7 +38,7 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
           </button>
           <NotificationBell />
           {username && (
-            <Link href={`/u/${username}`} aria-label={`@${username}`} title={`@${username}`}>
+            <Link href="/profile" aria-label="Profile" title="Profile">
               <Avatar src={avatarUrl} name={fullName} size="sm" />
             </Link>
           )}

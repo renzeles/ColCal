@@ -39,6 +39,7 @@ export type SentEvent = {
   longitude: number | null;
   capacity: number | null;
   is_online: boolean;
+  source?: "created" | "joined";
   created_at: string;
 };
 

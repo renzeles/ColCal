@@ -182,7 +182,7 @@ export default function ContactsPage() {
   const isSearchMode = searchResults !== null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br bg-[#faf6ef]">
+    <div className="min-h-screen bg-gradient-to-br bakery-bg">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -192,10 +192,10 @@ export default function ContactsPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-3xl font-bold text-stone-900" style={{ fontFamily: "var(--font-serif)" }}>{t("contacts_title")}</h1>
+          <h1 className="text-3xl font-bold text-stone-900" >{t("contacts_title")}</h1>
           <button
             onClick={handleInvite}
-            className="shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-full bg-teal-700 text-white text-xs font-semibold hover:bg-teal-800 transition"
+            className="shrink-0 flex items-center gap-1.5 px-3 h-9 rounded-full bg-[#8b5a3c] text-white text-xs font-semibold hover:bg-[#6b4423] transition"
           >
             {inviteCopied ? (
               <><Check className="h-3.5 w-3.5" /> {t("contacts_copied")}</>

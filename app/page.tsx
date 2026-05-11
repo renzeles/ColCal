@@ -5,98 +5,39 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar, Check, ChevronLeft, ChevronRight,
-  Lock, Pencil, Trash2, User as UserIcon, UserPlus, X,
+  Pencil, Plus, Share2, Trash2, UserCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
 import { Avatar } from "@/components/Avatar";
-import { SearchBar } from "@/components/SearchBar";
 import { Toast, useToast } from "@/components/Toast";
 import { Landing } from "@/components/Landing";
 import { FeedSkeleton } from "@/components/Skeleton";
 import { NearbyEvents } from "@/components/NearbyEvents";
+import { ChannelsSection } from "@/components/ChannelsSection";
 import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 import type { DemoEvent } from "@/components/NearbyEvents";
 import { useT } from "@/lib/i18n";
 
 type FeedItem = SentEvent & { creator: Profile };
-type EventFilter = "public" | "private" | "mine";
 type RsvpStatus = "accepted" | "declined";
-type MainTab = "discover" | "events" | "calendar";
+type MainTab = "discover" | "mine" | "agenddi";
+type AgendaSub = "contacts" | "channels";
 
-const DAYS_ES = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const MONTHS_ES = [
-  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
-];
+const DAYS_LABEL = ["S", "M", "T", "W", "T", "F", "S"];
+const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleString("es-AR", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Date(iso).toLocaleString("en-GB", {
+    weekday: "short", day: "numeric", month: "short",
+    hour: "2-digit", minute: "2-digit", hour12: false,
   });
 }
 
-// ─── Mini calendar (Descubrí tab) ────────────────────────────────────────────
-function MiniCalendar({ events }: { events: FeedItem[] }) {
-  const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-
-  const firstDow = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const eventDays = new Map<number, string>();
-  events.forEach((ev) => {
-    const d = new Date(ev.start_at);
-    if (d.getFullYear() === year && d.getMonth() === month) {
-      if (!eventDays.has(d.getDate())) eventDays.set(d.getDate(), ev.color ?? "violet");
-    }
-  });
-
-  const cells: (number | null)[] = [
-    ...Array(firstDow).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-
-  return (
-    <div className="bg-white rounded-2xl border border-zinc-200 p-4 shadow-sm">
-      <p className="text-sm font-semibold text-zinc-700 mb-3 capitalize">
-        {MONTHS_ES[month]} {year}
-      </p>
-      <div className="grid grid-cols-7 gap-0.5 text-center text-xs">
-        {["D", "L", "M", "M", "J", "V", "S"].map((d, i) => (
-          <div key={i} className="py-1 text-zinc-400 font-medium">{d}</div>
-        ))}
-        {cells.map((day, i) => {
-          const isToday = day === today.getDate();
-          const hasEvent = day !== null && eventDays.has(day);
-          return (
-            <div
-              key={i}
-              className={`relative py-1.5 rounded-lg font-medium
-                ${isToday ? "bg-teal-700 text-white" : day ? "text-zinc-700" : ""}
-              `}
-            >
-              {day}
-              {hasEvent && !isToday && (
-                <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-violet-500" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ─── Full calendar tab ────────────────────────────────────────────────────────
-function CalendarTab({ events }: { events: FeedItem[] }) {
+// ─── Calendar (full) ─────────────────────────────────────────────────────────
+function CalendarSection({ events }: { events: FeedItem[] }) {
   const today = new Date();
   const [calYear, setCalYear] = useState(today.getFullYear());
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -137,24 +78,22 @@ function CalendarTab({ events }: { events: FeedItem[] }) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-zinc-200 p-4 shadow-sm">
-        {/* Month nav */}
+      <div className="bg-white rounded-2xl card-shadow p-5">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={() => shiftMonth(-1)} className="text-zinc-400 hover:text-zinc-700 cursor-pointer">
+          <button onClick={() => shiftMonth(-1)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <p className="text-sm font-semibold text-zinc-800 capitalize">
-            {MONTHS_ES[calMonth]} {calYear}
+          <p className="text-base font-bold text-stone-800 capitalize font-extrabold tracking-tight">
+            {MONTHS_EN[calMonth]} {calYear}
           </p>
-          <button onClick={() => shiftMonth(1)} className="text-zinc-400 hover:text-zinc-700 cursor-pointer">
+          <button onClick={() => shiftMonth(1)} className="text-stone-400 hover:text-stone-700 cursor-pointer">
             <ChevronRight className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Grid */}
         <div className="grid grid-cols-7 gap-1 text-center text-xs">
-          {DAYS_ES.map((d) => (
-            <div key={d} className="py-1 text-zinc-400 font-medium">{d.slice(0, 1)}</div>
+          {DAYS_LABEL.map((d, i) => (
+            <div key={i} className="py-1 text-stone-400 font-medium">{d}</div>
           ))}
           {cells.map((day, i) => {
             const isToday = isThisMonth && day === today.getDate();
@@ -165,18 +104,17 @@ function CalendarTab({ events }: { events: FeedItem[] }) {
                 key={i}
                 disabled={!day}
                 onClick={() => day && setSelectedDay(day === selectedDay ? null : day)}
-                className={`relative py-2 rounded-xl font-medium transition cursor-pointer
-                  ${!day ? "invisible" : ""}
-                  ${isSelected ? "bg-teal-700 text-white" : isToday ? "bg-teal-50 text-violet-700" : "text-zinc-700 hover:bg-zinc-100"}
-                `}
+                className={`relative py-2 rounded-xl font-medium transition cursor-pointer ${!day ? "invisible" : ""} ${
+                  isSelected
+                    ? "bg-[#8b5a3c] text-white"
+                    : isToday
+                    ? "bg-[#fbf6ee] text-[#6b4423]"
+                    : "text-stone-700 hover:bg-stone-100"
+                }`}
               >
                 {day}
                 {dayEvents.length > 0 && !isSelected && (
-                  <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex gap-0.5">
-                    {dayEvents.slice(0, 3).map((ev, j) => (
-                      <span key={j} className="h-1 w-1 rounded-full bg-violet-500 inline-block" />
-                    ))}
-                  </span>
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full bg-[#8b5a3c]" />
                 )}
               </button>
             );
@@ -184,78 +122,170 @@ function CalendarTab({ events }: { events: FeedItem[] }) {
         </div>
       </div>
 
-      {/* Day events */}
       {selectedDay && (
         <div>
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2 px-1">
-            {DAYS_ES[new Date(calYear, calMonth, selectedDay).getDay()]} {selectedDay} de {MONTHS_ES[calMonth]}
-          </p>
           {selectedEvents.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-8 bg-white rounded-2xl border border-zinc-200">
-              Sin eventos este día.
+            <p className="text-sm text-stone-400 text-center py-8 bg-white rounded-2xl card-shadow">
+              No events this day.
             </p>
           ) : (
             <ul className="space-y-2">
-              {selectedEvents.map((ev) => {
-                const evStyles = getEventColorStyles(ev.color);
-                return (
-                  <li key={ev.id} className={`rounded-2xl border overflow-hidden shadow-sm ${evStyles.card} ${evStyles.border}`}>
-                    <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="flex items-start gap-3 p-4 cursor-pointer">
-                      <Avatar src={ev.creator.avatar_url} name={ev.creator.full_name} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-zinc-900 truncate">{ev.title}</h3>
-                        <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
-                          <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
-                        </p>
-                        {ev.location && (
-                          <p className="text-xs text-zinc-500 mt-0.5 truncate">📍 {ev.location}</p>
-                        )}
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
+              {selectedEvents.map((ev) => (
+                <CalendarEventRow key={ev.id} ev={ev} />
+              ))}
             </ul>
           )}
         </div>
       )}
+    </div>
+  );
+}
 
-      {/* Upcoming events list when no day selected */}
-      {!selectedDay && (
-        <div>
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide mb-2 px-1">Próximos eventos</p>
-          {events.filter((ev) => new Date(ev.start_at) >= today).length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-8 bg-white rounded-2xl border border-zinc-200">
-              No hay eventos próximos.
-            </p>
-          ) : (
-            <ul className="space-y-2">
-              {events
-                .filter((ev) => new Date(ev.start_at) >= today)
-                .sort((a, b) => a.start_at.localeCompare(b.start_at))
-                .slice(0, 10)
-                .map((ev) => {
-                  const evStyles = getEventColorStyles(ev.color);
-                  return (
-                    <li key={ev.id} className={`rounded-2xl border overflow-hidden shadow-sm ${evStyles.card} ${evStyles.border}`}>
-                      <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="flex items-start gap-3 p-4 cursor-pointer">
-                        <Avatar src={ev.creator.avatar_url} name={ev.creator.full_name} size="sm" />
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-zinc-900 truncate">{ev.title}</h3>
-                          <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
-                            <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
-                          </p>
-                          {ev.location && (
-                            <p className="text-xs text-zinc-500 mt-0.5 truncate">📍 {ev.location}</p>
-                          )}
-                        </div>
-                      </Link>
-                    </li>
-                  );
-                })}
-            </ul>
-          )}
+function CalendarEventRow({ ev }: { ev: FeedItem }) {
+  const evStyles = getEventColorStyles(ev.color);
+  return (
+    <li className={`rounded-2xl border overflow-hidden card-shadow ${evStyles.card} ${evStyles.border}`}>
+      <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="flex items-start gap-3 p-4 cursor-pointer">
+        <Avatar src={ev.creator.avatar_url} name={ev.creator.full_name} size="sm" />
+        <div className="flex-1 min-w-0">
+          <h3 className="font-medium text-stone-900 truncate">{ev.title}</h3>
+          <p className="text-xs text-stone-500 mt-0.5 flex items-center gap-1">
+            <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
+          </p>
+          {ev.location && <p className="text-xs text-stone-500 mt-0.5 truncate">📍 {ev.location}</p>}
         </div>
+      </Link>
+    </li>
+  );
+}
+
+
+// ─── Contacts section ────────────────────────────────────────────────────────
+function ContactsSection({ userId, userProfile }: { userId: string; userProfile: Profile }) {
+  const { t } = useT();
+  const toast = useToast();
+  const [mutuals, setMutuals] = useState<Profile[]>([]);
+  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
+  const [suggestions, setSuggestions] = useState<Profile[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const supabase = createClient();
+    (async () => {
+      const [{ data: followingRows }, { data: followerRows }, { data: requestRows }] = await Promise.all([
+        supabase.from("follows").select("following_id").eq("follower_id", userId),
+        supabase.from("follows").select("follower_id").eq("following_id", userId),
+        supabase.from("contact_requests").select("to_id").eq("from_id", userId).eq("status", "pending"),
+      ]);
+
+      const followingIds = (followingRows ?? []).map((r) => r.following_id);
+      const followerIds = new Set((followerRows ?? []).map((r) => r.follower_id));
+      const mutualIds = followingIds.filter((id) => followerIds.has(id));
+      const pending = new Set((requestRows ?? []).map((r) => r.to_id));
+
+      const profiles = mutualIds.length === 0
+        ? []
+        : (await supabase.from("profiles").select("*").in("id", mutualIds)).data ?? [];
+      setMutuals((profiles as Profile[]) ?? []);
+      setPendingIds(pending);
+
+      // Load suggestions
+      const exclude = new Set([userId, ...followingIds, ...pending]);
+      const { data: suggestData } = await supabase
+        .from("profiles").select("*").neq("id", userId).not("username", "is", null).limit(20);
+      const filtered = ((suggestData as Profile[]) ?? []).filter((p) => !exclude.has(p.id)).slice(0, 12);
+      setSuggestions(filtered);
+      setLoading(false);
+    })();
+  }, [userId]);
+
+  async function sendRequest(target: Profile) {
+    if (busyId) return;
+    setBusyId(target.id);
+    const supabase = createClient();
+    try {
+      const { error } = await supabase.from("contact_requests").insert({
+        from_id: userId, to_id: target.id, status: "pending",
+      });
+      if (error) throw error;
+      await supabase.from("notifications").insert({
+        user_id: target.id, type: "contact_request",
+        data: {
+          from_id: userId,
+          from_name: userProfile.full_name ?? userProfile.username ?? "Someone",
+          from_username: userProfile.username,
+          from_avatar: userProfile.avatar_url,
+        },
+      });
+      setPendingIds((prev) => new Set(prev).add(target.id));
+      setSuggestions((prev) => prev.filter((p) => p.id !== target.id));
+      toast.show("success", `Request sent to ${target.full_name ?? target.username}.`);
+    } catch {
+      toast.show("error", "Couldn't send request.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  if (loading) return <div className="text-sm text-stone-500 text-center py-8">{t("page_loading")}</div>;
+
+  return (
+    <div className="space-y-4">
+      <Toast state={toast.state} />
+
+      {/* Suggestions strip — no title */}
+      {suggestions.length > 0 && (
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 snap-x">
+          {suggestions.map((p) => (
+            <div key={p.id} className="snap-start shrink-0 w-32 bg-white rounded-2xl card-shadow p-3 flex flex-col items-center text-center">
+              <Link href={`/u/${p.username}`} className="mb-2">
+                <Avatar src={p.avatar_url} name={p.full_name} size="lg" />
+              </Link>
+              <Link href={`/u/${p.username}`} className="text-xs font-semibold text-stone-900 truncate w-full hover:underline">
+                {p.full_name ?? p.username}
+              </Link>
+              <p className="text-[10px] text-stone-500 truncate w-full">@{p.username}</p>
+              {pendingIds.has(p.id) ? (
+                <span className="mt-2 w-full text-center text-[10px] font-semibold text-stone-500 px-2 py-1.5 rounded-full bg-stone-100">
+                  {t("contacts_pending")}
+                </span>
+              ) : (
+                <button
+                  onClick={() => sendRequest(p)}
+                  disabled={busyId === p.id}
+                  className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-[#8b5a3c] px-2 py-1.5 rounded-full transition cursor-pointer disabled:opacity-60"
+                >
+                  + {t("contacts_add")}
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mutuals list */}
+      {mutuals.length === 0 ? (
+        <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
+          {t("contacts_empty_contacts")}
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {mutuals.map((p) => (
+            <li key={p.id} className="bg-white rounded-xl card-shadow p-3 flex items-center gap-3">
+              <Link href={`/u/${p.username}`}>
+                <Avatar src={p.avatar_url} name={p.full_name} size="md" />
+              </Link>
+              <Link href={`/u/${p.username}`} className="flex-1 min-w-0 hover:underline">
+                <div className="font-medium text-stone-900 truncate">{p.full_name ?? p.username}</div>
+                <div className="text-xs text-stone-500 truncate">@{p.username}</div>
+              </Link>
+              <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-default">
+                <UserCheck className="h-3.5 w-3.5" /> {t("contacts_contact")}
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -269,34 +299,21 @@ export default function HomePage() {
   const { t } = useT();
 
   const [mainTab, setMainTab] = useState<MainTab>("discover");
-  const [eventFilter, setEventFilter] = useState<EventFilter>("public");
+  const [agendaSub, setAgendaSub] = useState<AgendaSub>("contacts");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const [publicItems, setPublicItems] = useState<FeedItem[]>([]);
   const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
   const [mineItems, setMineItems] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [followingCount, setFollowingCount] = useState(0);
-  const [followedSet, setFollowedSet] = useState<Set<string>>(new Set());
-  const [query, setQuery] = useState("");
-
   const [myRsvpMap, setMyRsvpMap] = useState<Map<string, RsvpStatus>>(new Map());
   const [rsvpCounts, setRsvpCounts] = useState<Map<string, number>>(new Map());
-  const [rsvpBusy, setRsvpBusy] = useState<string | null>(null);
-  const [followBusy, setFollowBusy] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     (async () => {
       setLoading(true);
-
-      const { data: follows } = await supabase
-        .from("follows").select("following_id").eq("follower_id", user.id);
-      const followedIds = (follows ?? []).map((f) => f.following_id);
-      setFollowingCount(followedIds.length);
-      setFollowedSet(new Set(followedIds));
 
       const privateQuery = user.email
         ? supabase.from("sent_events").select("*")
@@ -306,25 +323,16 @@ export default function HomePage() {
             .order("start_at", { ascending: false }).limit(100)
         : null;
 
-      const publicQuery = followedIds.length > 0
-        ? supabase.from("sent_events").select("*")
-            .in("creator_id", followedIds)
-            .eq("visibility", "public")
-            .order("start_at", { ascending: false }).limit(100)
-        : null;
-
       const mineQuery = supabase.from("sent_events").select("*")
         .eq("creator_id", user.id)
         .order("start_at", { ascending: false }).limit(100);
 
-      const [publicRes, privateRes, mineRes] = await Promise.all([
-        publicQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
+      const [privateRes, mineRes] = await Promise.all([
         privateQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
         mineQuery,
       ]);
 
       const allCreatorIds = Array.from(new Set([
-        ...((publicRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
         ...((privateRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
         ...((mineRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
       ]));
@@ -337,14 +345,13 @@ export default function HomePage() {
 
       function withCreator(events: SentEvent[]): FeedItem[] {
         return events
-          .map((e) => { const creator = profileMap.get(e.creator_id); return creator ? { ...e, creator } : null; })
+          .map((e) => { const c = profileMap.get(e.creator_id); return c ? { ...e, creator: c } : null; })
           .filter((x): x is FeedItem => x !== null);
       }
 
       const resolvedPrivate = withCreator((privateRes.data ?? []) as SentEvent[]);
       const resolvedMine = withCreator((mineRes.data ?? []) as SentEvent[]);
 
-      setPublicItems(withCreator((publicRes.data ?? []) as SentEvent[]));
       setPrivateItems(resolvedPrivate);
       setMineItems(resolvedMine);
 
@@ -372,39 +379,22 @@ export default function HomePage() {
     })();
   }, [user]);
 
-  async function rsvp(eventId: string, status: RsvpStatus) {
-    if (!user || rsvpBusy) return;
-    setRsvpBusy(eventId);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.from("event_rsvps").upsert({ event_id: eventId, user_id: user.id, status });
-      if (error) throw error;
-      setMyRsvpMap((prev) => new Map(prev).set(eventId, status));
-    } catch {
-      toast.show("error", "No se pudo guardar tu respuesta.");
-    } finally {
-      setRsvpBusy(null);
+  async function shareEvent(ev: FeedItem) {
+    const url = `${window.location.origin}/u/${ev.creator.username}/e/${ev.id}`;
+    const text = `${ev.title} · ${formatDate(ev.start_at)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: ev.title, text, url }); return; } catch { /* */ }
     }
-  }
-
-  async function quickFollow(profileId: string) {
-    if (!user || followBusy) return;
-    setFollowBusy(profileId);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("follows").insert({ follower_id: user.id, following_id: profileId });
-      if (error) throw error;
-      setFollowedSet((prev) => new Set(prev).add(profileId));
-      setFollowingCount((c) => c + 1);
+      await navigator.clipboard.writeText(url);
+      toast.show("success", "Link copied");
     } catch {
-      toast.show("error", "No se pudo seguir.");
-    } finally {
-      setFollowBusy(null);
+      toast.show("error", "Could not share");
     }
   }
 
   async function deleteMineEvent(evId: string, title: string) {
-    if (deletingId || !confirm(`¿Borrar "${title}"?`)) return;
+    if (deletingId || !confirm(`Delete "${title}"?`)) return;
     setDeletingId(evId);
     try {
       const supabase = createClient();
@@ -412,7 +402,7 @@ export default function HomePage() {
       if (error) throw error;
       setMineItems((prev) => prev.filter((e) => e.id !== evId));
     } catch {
-      toast.show("error", "No se pudo borrar el evento.");
+      toast.show("error", "Couldn't delete event.");
     } finally {
       setDeletingId(null);
     }
@@ -432,39 +422,27 @@ export default function HomePage() {
         attendee_emails: [],
         provider: "google",
         provider_event_id: null,
-        visibility: "public",
+        visibility: "private",
         image_url: ev.image,
         color: "violet",
+        source: "joined",
       }).select("*").single();
       if (error) throw error;
       const creator = user.profile as Profile;
       setMineItems((prev) => [{ ...(data as SentEvent), creator }, ...prev]);
-      toast.show("success", `"${ev.title}" agregado a Mis eventos.`);
+      toast.show("success", `"${ev.title}" added.`);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? "";
-      toast.show("error", msg ? `Error: ${msg}` : "No se pudo agregar el evento.");
+      const msg = err instanceof Error ? err.message : "";
+      toast.show("error", msg ? `Error: ${msg}` : "Couldn't add event.");
     }
   }
-
-  const filteredItems = useMemo(() => {
-    const base = eventFilter === "public" ? publicItems : eventFilter === "private" ? privateItems : mineItems;
-    const q = query.trim().toLowerCase();
-    if (!q) return base;
-    return base.filter((ev) =>
-      ev.title.toLowerCase().includes(q) ||
-      (ev.description ?? "").toLowerCase().includes(q) ||
-      (ev.location ?? "").toLowerCase().includes(q) ||
-      (ev.creator.username ?? "").toLowerCase().includes(q) ||
-      (ev.creator.full_name ?? "").toLowerCase().includes(q)
-    );
-  }, [eventFilter, publicItems, privateItems, mineItems, query]);
 
   const allMyEvents = useMemo(() => [...mineItems, ...privateItems], [mineItems, privateItems]);
 
   if (userLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-zinc-500 text-sm">Cargando…</div>
+        <div className="text-stone-500 text-sm">{t("page_loading")}</div>
       </div>
     );
   }
@@ -472,7 +450,7 @@ export default function HomePage() {
   if (!user) return <Landing />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br bg-[#faf6ef]">
+    <div className="min-h-screen bakery-bg">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -481,216 +459,169 @@ export default function HomePage() {
       />
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
-        {/* Main tab bar — underline style */}
-        <div className="flex border-b border-stone-200">
-          {(["discover", "events", "calendar"] as const).map((tab) => {
+        {/* Main tab bar — modern bold */}
+        <div className="flex gap-6 border-b border-stone-200/70">
+          {(["discover", "mine", "agenddi"] as const).map((tab) => {
             const labels = {
               discover: t("page_tab_discover"),
-              events: t("page_tab_events"),
-              calendar: t("page_tab_calendar"),
+              mine: t("page_tab_events"),
+              agenddi: t("page_tab_agenddi"),
             };
             return (
               <button
                 key={tab}
                 onClick={() => setMainTab(tab)}
-                className={`flex-1 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer ${
+                className={`relative pb-3 pt-1 text-[15px] font-extrabold tracking-tight transition-colors cursor-pointer ${
                   mainTab === tab
-                    ? "border-[#c2410c] text-[#c2410c]"
-                    : "border-transparent text-stone-500 hover:text-stone-800"
+                    ? "text-stone-900"
+                    : "text-stone-400 hover:text-stone-700"
                 }`}
               >
                 {labels[tab]}
+                {mainTab === tab && (
+                  <span className="absolute -bottom-px left-0 right-0 h-[3px] bg-[#8b5a3c] rounded-full" />
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* ── Descubrí tab ── */}
+        {/* ── Discover ── */}
         {mainTab === "discover" && (
-          <div className="space-y-4">
-            <NearbyEvents onAdd={addDemoEvent} />
-            <MiniCalendar events={allMyEvents} />
-          </div>
+          <NearbyEvents onAdd={addDemoEvent} />
         )}
 
-        {/* ── Eventos tab ── */}
-        {mainTab === "events" && (
-          <>
-            <SearchBar value={query} onChange={setQuery} placeholder={t("page_search_events")} />
-
-            <div className="flex border-b border-stone-200">
-              {(["public", "private", "mine"] as const).map((f) => {
-                const meta = {
-                  public: { label: t("page_filter_public"), count: publicItems.length },
-                  private: { label: t("page_filter_private"), count: privateItems.length },
-                  mine: { label: t("page_filter_mine"), count: mineItems.length },
-                };
-                return (
-                  <button
-                    key={f}
-                    onClick={() => setEventFilter(f)}
-                    className={`flex-1 py-2 text-xs sm:text-sm font-medium border-b-2 -mb-px transition-colors cursor-pointer whitespace-nowrap ${
-                      eventFilter === f
-                        ? "border-teal-700 text-teal-700"
-                        : "border-transparent text-stone-500 hover:text-stone-800"
-                    }`}
-                  >
-                    {meta[f].label}
-                    <span className="ml-1 text-xs opacity-60">({meta[f].count})</span>
-                  </button>
-                );
-              })}
+        {/* ── Mis eventos ── */}
+        {mainTab === "mine" && (
+          <div className="space-y-5">
+            {/* Minimalist Create button */}
+            <div className="flex justify-end">
+              <Link
+                href="/create"
+                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#8b5a3c] text-white text-sm font-semibold hover:bg-[#6b4423] transition cursor-pointer"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} /> {t("create_event_cta")}
+              </Link>
             </div>
 
+            {/* Calendar */}
+            {!loading && <CalendarSection events={allMyEvents} />}
+
+            {/* Events list */}
             {loading ? (
               <FeedSkeleton />
-            ) : filteredItems.length === 0 ? (
-              <div className="text-sm text-stone-500 text-center py-14 bg-white rounded-2xl card-shadow">
-                {query.trim() ? (
-                  "Sin resultados para tu búsqueda."
-                ) : eventFilter === "public" ? (
-                  followingCount === 0 ? (
-                    <>
-                      <p className="mb-1">No estás siguiendo a nadie todavía.</p>
-                      <p className="text-xs">Buscá perfiles y seguilos para ver sus eventos públicos.</p>
-                    </>
-                  ) : (
-                    "Las personas que seguís no publicaron eventos todavía."
-                  )
-                ) : eventFilter === "private" ? (
-                  "No te invitaron a ningún evento privado todavía."
-                ) : (
-                  <>
-                    <p className="mb-1">Todavía no creaste ningún evento.</p>
-                    <Link href="/create" className="text-xs text-blue-600 hover:underline cursor-pointer">
-                      Creá tu primer evento →
-                    </Link>
-                  </>
-                )}
+            ) : mineItems.length === 0 ? (
+              <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
+                {t("page_no_mine")}
               </div>
             ) : (
               <ul className="space-y-3">
-                {filteredItems.map((ev) => {
+                {mineItems.map((ev) => {
                   const evStyles = getEventColorStyles(ev.color);
-                  const myRsvp = myRsvpMap.get(ev.id);
                   const acceptedCount = rsvpCounts.get(ev.id) ?? 0;
-                  const isFollowingCreator = followedSet.has(ev.creator_id);
-
+                  const isJoined = ev.source === "joined";
                   return (
                     <li
                       key={ev.id}
-                      className={`rounded-2xl overflow-hidden card-shadow card-shadow-hover transition-shadow ${evStyles.card} ${evStyles.border} border`}
+                      className={`rounded-2xl overflow-hidden card-shadow card-shadow-hover ${evStyles.card} border ${evStyles.border}`}
                     >
                       {ev.image_url && (
                         <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="cursor-pointer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={ev.image_url} alt={ev.title} className="w-full h-48 object-cover" />
+                          <img src={ev.image_url} alt={ev.title} className="w-full h-44 object-cover" />
                         </Link>
                       )}
-                      <div className="flex items-start gap-3 p-4">
-                        <Link href={`/u/${ev.creator.username}`} className="cursor-pointer">
-                          <Avatar src={ev.creator.avatar_url} name={ev.creator.full_name} size="md" />
-                        </Link>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-baseline gap-1.5 min-w-0">
-                              <Link
-                                href={`/u/${ev.creator.username}`}
-                                className="font-medium text-zinc-900 hover:underline truncate cursor-pointer"
-                              >
-                                {ev.creator.full_name ?? ev.creator.username}
-                              </Link>
-                              <span className="text-xs text-zinc-400 shrink-0">@{ev.creator.username}</span>
-                            </div>
-                            {eventFilter === "private" && !isFollowingCreator && (
-                              <button
-                                onClick={() => quickFollow(ev.creator_id)}
-                                disabled={followBusy === ev.creator_id}
-                                className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60 cursor-pointer"
-                              >
-                                <UserPlus className="h-3 w-3" /> Seguir
-                              </button>
-                            )}
-                            {eventFilter === "mine" && (
-                              <div className="flex items-center gap-1 shrink-0">
-                                {acceptedCount > 0 && (
-                                  <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                                    <Check className="h-3 w-3" />
-                                    {acceptedCount} {acceptedCount === 1 ? "confirmó" : "confirmaron"}
-                                  </span>
-                                )}
-                                <button
-                                  onClick={() => router.push(`/create?edit=${ev.id}`)}
-                                  aria-label="Editar"
-                                  className="h-7 w-7 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 transition cursor-pointer"
-                                >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => deleteMineEvent(ev.id, ev.title)}
-                                  disabled={deletingId === ev.id}
-                                  aria-label="Borrar"
-                                  className="h-7 w-7 flex items-center justify-center rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50 cursor-pointer"
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          <Link
-                            href={`/u/${ev.creator.username}/e/${ev.id}`}
-                            className="block hover:underline cursor-pointer"
-                          >
-                            <h3 className="font-medium text-zinc-900 mt-1.5">{ev.title}</h3>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-2">
+                          <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="block hover:underline cursor-pointer flex-1 min-w-0">
+                            <h3 className="text-lg font-extrabold text-stone-900 tracking-tight">{ev.title}</h3>
                           </Link>
-                          <p className="text-xs text-zinc-500 mt-0.5 flex items-center gap-1">
-                            <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
-                          </p>
-                          {ev.location && <p className="text-xs text-zinc-500 mt-0.5">📍 {ev.location}</p>}
-                          {ev.description && (
-                            <p className="text-sm text-zinc-700 mt-2 whitespace-pre-line line-clamp-3">{ev.description}</p>
-                          )}
-                          {eventFilter === "private" && (
-                            <div className="flex items-center gap-2 mt-3">
+                          <div className="flex items-center gap-1 shrink-0">
+                            {acceptedCount > 0 && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
+                                <Check className="h-3 w-3" /> {acceptedCount}
+                              </span>
+                            )}
+                            {isJoined && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fbf6ee] text-[#8b5a3c]">
+                                Joined
+                              </span>
+                            )}
+                            {!isJoined && (
                               <button
-                                onClick={() => rsvp(ev.id, "accepted")}
-                                disabled={rsvpBusy === ev.id}
-                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition disabled:opacity-60 cursor-pointer ${
-                                  myRsvp === "accepted"
-                                    ? "bg-emerald-600 text-white"
-                                    : "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                                }`}
+                                onClick={() => router.push(`/create?edit=${ev.id}`)}
+                                aria-label="Edit"
+                                className="h-7 w-7 flex items-center justify-center rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
                               >
-                                <Check className="h-3 w-3" />
-                                {myRsvp === "accepted" ? "Confirmado" : "Confirmar"}
+                                <Pencil className="h-3.5 w-3.5" />
                               </button>
-                              <button
-                                onClick={() => rsvp(ev.id, "declined")}
-                                disabled={rsvpBusy === ev.id}
-                                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition disabled:opacity-60 cursor-pointer ${
-                                  myRsvp === "declined"
-                                    ? "bg-zinc-700 text-white"
-                                    : "bg-zinc-50 text-zinc-600 border border-zinc-200 hover:bg-zinc-100"
-                                }`}
-                              >
-                                <X className="h-3 w-3" />
-                                {myRsvp === "declined" ? "No puedo" : "No puedo ir"}
-                              </button>
-                            </div>
-                          )}
+                            )}
+                            <button
+                              onClick={() => shareEvent(ev)}
+                              aria-label="Share"
+                              className="h-7 w-7 flex items-center justify-center rounded-full text-stone-400 hover:text-[#8b5a3c] hover:bg-[#fbf6ee] transition cursor-pointer"
+                            >
+                              <Share2 className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => deleteMineEvent(ev.id, ev.title)}
+                              disabled={deletingId === ev.id}
+                              aria-label="Delete"
+                              className="h-7 w-7 flex items-center justify-center rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50 cursor-pointer"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
+                        <p className="text-xs text-stone-500 mt-1.5 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> {formatDate(ev.start_at)}
+                        </p>
+                        {ev.location && <p className="text-xs text-stone-500 mt-0.5">📍 {ev.location}</p>}
+                        {ev.description && (
+                          <p className="text-sm text-stone-700 mt-2 whitespace-pre-line line-clamp-3">{ev.description}</p>
+                        )}
                       </div>
                     </li>
                   );
                 })}
               </ul>
             )}
-          </>
+          </div>
         )}
 
-        {/* ── Calendario tab ── */}
-        {mainTab === "calendar" && (
-          loading ? <FeedSkeleton /> : <CalendarTab events={allMyEvents} />
+        {/* ── Mi Agenddi ── */}
+        {mainTab === "agenddi" && (
+          <div className="space-y-4">
+            {/* Sub-tabs */}
+            <div className="flex gap-2 bg-white rounded-2xl card-shadow p-1.5">
+              {(["contacts", "channels"] as const).map((s) => {
+                const labels = {
+                  contacts: t("agenda_sub_contacts"),
+                  channels: t("agenda_sub_channels"),
+                };
+                return (
+                  <button
+                    key={s}
+                    onClick={() => setAgendaSub(s)}
+                    className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition cursor-pointer ${
+                      agendaSub === s
+                        ? "bg-[#8b5a3c] text-white"
+                        : "text-stone-600 hover:bg-stone-100"
+                    }`}
+                  >
+                    {labels[s]}
+                  </button>
+                );
+              })}
+            </div>
+
+            {agendaSub === "contacts" && (
+              <ContactsSection userId={user.id} userProfile={user.profile as Profile} />
+            )}
+            {agendaSub === "channels" && (
+              <ChannelsSection userId={user.id} />
+            )}
+          </div>
         )}
       </main>
 
