@@ -638,7 +638,16 @@ export default function HomePage() {
 
         {/* ── Discover ── */}
         {mainTab === "discover" && (
-          <NearbyEvents onAdd={addDemoEvent} />
+          <div className="space-y-4">
+            {/* Install guide — visible only in Discover */}
+            <Link
+              href="/for-iphone"
+              className="block text-center bg-[#fbf6ee] border border-[#8b5a3c]/15 rounded-2xl py-2 sm:py-2.5 text-[11px] sm:text-xs font-bold tracking-wider uppercase text-[#8b5a3c] hover:bg-white hover:border-[#8b5a3c]/30 transition-colors"
+            >
+              📱 For iPhone — install Agenddi as an app ↗
+            </Link>
+            <NearbyEvents onAdd={addDemoEvent} />
+          </div>
         )}
 
         {/* ── Events ── */}

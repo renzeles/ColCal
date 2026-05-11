@@ -40,7 +40,7 @@ const dict: Dict = {
   ne_attend_one: { en: "1 person going", es: "1 persona va" },
   ne_attend_many: { en: "{n} people going", es: "{n} personas van" },
   ne_close: { en: "Close", es: "Cerrar" },
-  ne_search: { en: "Search by keyword, neighborhood, city…", es: "Buscar por palabra, barrio, ciudad…" },
+  ne_search: { en: "Keyword, neighborhood, city…", es: "Palabra, barrio, ciudad…" },
   ne_no_results: { en: "No events match", es: "Ningún evento coincide con" },
   ne_clear: { en: "Clear", es: "Limpiar" },
   ne_showing: { en: "Showing {n} of {total}", es: "Mostrando {n} de {total}" },
