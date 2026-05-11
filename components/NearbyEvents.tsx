@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, ExternalLink, MapPin, RotateCcw, Search, Share2, Users, X } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, MapPin, RotateCcw, Search, Share2, Users, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { DatePicker } from "./DatePicker";
+import { generateWorldEvents } from "@/lib/world-events";
 
 export type DemoEvent = {
   id: string;
@@ -11,6 +12,7 @@ export type DemoEvent = {
   venue: string;
   hood: string;
   city: string;
+  country?: string;
   location: string;
   dateLabel: string;
   timeLabel: string;
@@ -129,7 +131,7 @@ function ev(
 }
 
 // ── 100 events across Argentina ──────────────────────────────────────────────
-const EVENTS: DemoEvent[] = [
+const AR_EVENTS: DemoEvent[] = [
   // ─── CABA ───
   ev(1,  "Chef en Vivo",            "La Parrilla del Puerto", "Puerto Madero",  "CABA", "2026-05-16T21:00:00", 2.5, 12, "food"),
   ev(2,  "Rolling Stones Tribute",  "Bar Hood",               "Palermo",        "CABA", "2026-05-17T22:00:00", 3,    5, "music"),
@@ -245,14 +247,20 @@ const EVENTS: DemoEvent[] = [
   ev(100,"Cataratas al Atardecer",  "Parque Nacional",        "Iguazú",         "Misiones",  "2026-08-09T16:00:00", 4, 40, "outdoor"),
 ];
 
+// Worldwide events generated at module load (~5000 events across 50 cities)
+const EVENTS: DemoEvent[] = [
+  ...AR_EVENTS.map((e) => ({ ...e, country: "Argentina" })),
+  ...generateWorldEvents(),
+];
+
 function gCalLink(ev: DemoEvent) {
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const url = new URL("https://calendar.google.com/calendar/render");
   url.searchParams.set("action", "TEMPLATE");
   url.searchParams.set("text", ev.title);
   url.searchParams.set("dates", `${fmt(new Date(ev.startISO))}/${fmt(new Date(ev.endISO))}`);
-  url.searchParams.set("details", `${ev.venue} · ${ev.location}`);
-  url.searchParams.set("location", `${ev.venue}, ${ev.location}`);
+  url.searchParams.set("details", `${ev.venue} · ${ev.location}${ev.country ? ", " + ev.country : ""}`);
+  url.searchParams.set("location", `${ev.venue}, ${ev.location}${ev.country ? ", " + ev.country : ""}`);
   return url.toString();
 }
 
@@ -322,9 +330,9 @@ function EventDetailModal({
               <MapPin className="h-4 w-4 text-[#8b5a3c] shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-stone-800">{ev.venue}</div>
-                <div className="text-stone-500 text-xs">{ev.hood} · {ev.city}, Argentina</div>
+                <div className="text-stone-500 text-xs">{ev.hood} · {ev.city}{ev.country ? `, ${ev.country}` : ""}</div>
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ev.venue}, ${ev.hood}, ${ev.city}, Argentina`)}`}
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${ev.venue}, ${ev.hood}, ${ev.city}${ev.country ? ", " + ev.country : ""}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 mt-1.5 text-xs font-semibold text-[#8b5a3c] hover:text-[#6b4423] transition cursor-pointer"
@@ -414,10 +422,51 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
   const { t } = useT();
   const [query, setQuery] = useState("");
   const [pickedDate, setPickedDate] = useState("");
-  const [current, setCurrent] = useState(0);
+  const [selectedCity, setSelectedCity] = useState<string>("all");
   const [copied, setCopied] = useState<string | null>(null);
   const [selected, setSelected] = useState<DemoEvent | null>(null);
-  const pauseRef = useRef(false);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const pausedUntilRef = useRef(0);
+  // Mouse drag state
+  const dragRef = useRef<{ down: boolean; startX: number; startScroll: number; moved: boolean }>({
+    down: false, startX: 0, startScroll: 0, moved: false,
+  });
+
+  const allCities = useMemo(() => {
+    const set = new Set<string>();
+    EVENTS.forEach((e) => set.add(e.city));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, []);
+
+  // GPS detection on mount → set default city if it matches one in events
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    let cancelled = false;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } }
+          );
+          if (!r.ok || cancelled) return;
+          const data = await r.json();
+          const detected =
+            data.address?.city ||
+            data.address?.town ||
+            data.address?.state ||
+            data.address?.country;
+          if (!detected) return;
+          const match = allCities.find((c) => norm(c) === norm(detected));
+          if (match && !cancelled) setSelectedCity(match);
+        } catch { /* silent */ }
+      },
+      () => {},
+      { timeout: 10000, maximumAge: 600000 }
+    );
+    return () => { cancelled = true; };
+  }, [allCities]);
 
   const filteredEvents = useMemo(() => {
     const q = norm(query.trim());
@@ -431,39 +480,87 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
         if (!matches) return false;
       }
       if (pickedDate && e.startISO.slice(0, 10) !== pickedDate) return false;
+      if (selectedCity !== "all" && e.city !== selectedCity) return false;
       return true;
     });
-  }, [query, pickedDate]);
+  }, [query, pickedDate, selectedCity]);
 
   const n = filteredEvents.length;
   const total = EVENTS.length;
-  const isFiltering = query.trim().length > 0 || pickedDate.length > 0;
+  const isFiltering = query.trim().length > 0 || pickedDate.length > 0 || selectedCity !== "all";
 
-  // Reset carousel when filter changes
-  useEffect(() => { setCurrent(0); }, [query, pickedDate]);
-
-  const advance = useCallback(() => {
-    if (!pauseRef.current && n > 0 && !isFiltering) setCurrent((c) => (c + 1) % n);
-  }, [n, isFiltering]);
+  function pauseAutoRotate(ms = 6000) {
+    pausedUntilRef.current = Date.now() + ms;
+  }
 
   function clearAll() {
     setQuery("");
     setPickedDate("");
+    setSelectedCity("all");
   }
 
+  // Reset scroll when filter changes
   useEffect(() => {
-    const id = setInterval(advance, 4500);
-    return () => clearInterval(id);
-  }, [advance]);
+    trackRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+  }, [query, pickedDate, selectedCity]);
 
-  useEffect(() => { pauseRef.current = selected !== null; }, [selected]);
-
-  function go(dir: 1 | -1) {
-    if (n === 0) return;
-    setCurrent((c) => (c + dir + n) % n);
-    pauseRef.current = true;
-    setTimeout(() => { if (!selected) pauseRef.current = false; }, 6000);
+  function getStride(): number {
+    const el = trackRef.current;
+    if (!el) return 0;
+    const first = el.firstElementChild as HTMLElement | null;
+    if (!first) return 0;
+    return first.offsetWidth + 12;
   }
+
+  function scrollByCard(dir: 1 | -1) {
+    const el = trackRef.current;
+    if (!el) return;
+    pauseAutoRotate();
+    const stride = getStride();
+    if (!stride) return;
+    const maxScroll = el.scrollWidth - el.clientWidth;
+    let target = el.scrollLeft + stride * dir;
+    if (target > maxScroll + 5) target = 0;
+    if (target < -5) target = maxScroll;
+    el.scrollTo({ left: target, behavior: "smooth" });
+  }
+
+  // Auto-rotate every 4.5s — pauses on user interaction
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (selected !== null) return;
+      if (Date.now() < pausedUntilRef.current) return;
+      const el = trackRef.current;
+      if (!el) return;
+      const stride = getStride();
+      if (!stride) return;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (el.scrollLeft + stride > maxScroll) {
+        el.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        el.scrollBy({ left: stride, behavior: "smooth" });
+      }
+    }, 4500);
+    return () => clearInterval(id);
+  }, [selected, n]);
+
+  // Mouse drag-to-scroll
+  function onMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    const el = trackRef.current;
+    if (!el) return;
+    dragRef.current = { down: true, startX: e.pageX, startScroll: el.scrollLeft, moved: false };
+    pauseAutoRotate();
+  }
+  function onMouseMove(e: React.MouseEvent<HTMLDivElement>) {
+    const d = dragRef.current;
+    if (!d.down) return;
+    const el = trackRef.current;
+    if (!el) return;
+    const dx = e.pageX - d.startX;
+    if (Math.abs(dx) > 4) d.moved = true;
+    el.scrollLeft = d.startScroll - dx;
+  }
+  function endDrag() { dragRef.current.down = false; }
 
   async function share(ev: DemoEvent) {
     const text = `${ev.title} · ${ev.dateLabel} ${ev.timeLabel} · ${ev.venue} · ${ev.hood}`;
@@ -477,28 +574,39 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
 
   return (
     <>
-      <section className="bg-white rounded-[28px] card-shadow p-6 sm:p-8">
-        <div className="flex items-end justify-between gap-4 mb-6">
-          <div className="min-w-0">
+      <section className="bg-white rounded-[28px] card-shadow p-5 sm:p-8">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 mb-2">
               <MapPin className="h-3 w-3 text-[#8b5a3c]" strokeWidth={3} />
               <span className="eyebrow">{t("ne_label")}</span>
             </div>
-            <h3 className="text-3xl sm:text-[34px] text-stone-900 leading-[1.05] font-extrabold tracking-tighter">
+            <h3 className="text-2xl sm:text-[34px] text-stone-900 leading-[1.05] font-extrabold tracking-tighter">
               {t("ne_title")}
             </h3>
-            <p className="text-sm text-stone-500 mt-1.5 font-medium">
-              {isFiltering ? t("ne_showing", { n, total }) : t("ne_count", { n })}
-            </p>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={() => go(-1)} aria-label={t("ne_prev")} className="h-9 w-9 rounded-full bg-stone-100 hover:bg-[#8b5a3c] text-stone-500 hover:text-white flex items-center justify-center transition cursor-pointer btn-modern">
+            <button onClick={() => scrollByCard(-1)} aria-label={t("ne_prev")} className="h-9 w-9 rounded-full bg-stone-100 hover:bg-[#8b5a3c] text-stone-500 hover:text-white flex items-center justify-center transition btn-modern">
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <button onClick={() => go(1)} aria-label={t("ne_next")} className="h-9 w-9 rounded-full bg-stone-100 hover:bg-[#8b5a3c] text-stone-500 hover:text-white flex items-center justify-center transition cursor-pointer btn-modern">
+            <button onClick={() => scrollByCard(1)} aria-label={t("ne_next")} className="h-9 w-9 rounded-full bg-stone-100 hover:bg-[#8b5a3c] text-stone-500 hover:text-white flex items-center justify-center transition btn-modern">
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
+        </div>
+
+        {/* City dropdown — its own row below the title */}
+        <div className="flex items-center gap-2 mb-5">
+          <CityFilter
+            cities={allCities}
+            value={selectedCity}
+            onChange={setSelectedCity}
+            allLabel={t("ne_city_all")}
+            searchPlaceholder={t("ne_city_search")}
+          />
+          <p className="text-sm text-stone-500 font-medium truncate">
+            {isFiltering ? t("ne_showing", { n, total }) : t("ne_count", { n })}
+          </p>
         </div>
 
         {/* Search + date picker + single clear */}
@@ -540,29 +648,32 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
               {t("ne_clear")} →
             </button>
           </div>
-        ) : isFiltering ? (
-          // Filtered view: grid of all matches (more useful when searching)
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto -mx-1 px-1">
-            {filteredEvents.map((e) => (
-              <div key={e.id}>
-                <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
-              </div>
-            ))}
-          </div>
         ) : (
-          // Default view: rotating carousel
-          <div className="relative overflow-hidden">
-            <div className="flex gap-3">
-              {[0, 1, 2, 3].map((offset) => {
-                const e = filteredEvents[(current + offset) % n];
-                return (
-                  <div key={`${current}-${offset}`} className="shrink-0 w-[78%] sm:w-[45%] md:w-[30%]">
-                    <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
-                  </div>
-                );
-              })}
+          // Drag/swipe carousel — native scroll-snap, 3 cards visible, auto-rotates
+          <div className="relative">
+            <div
+              ref={trackRef}
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={endDrag}
+              onMouseLeave={endDrag}
+              className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 cursor-grab active:cursor-grabbing select-none"
+              style={{ touchAction: "pan-y" }}
+            >
+              {filteredEvents.map((e) => (
+                <div
+                  key={e.id}
+                  className="snap-start shrink-0 w-[78%] sm:w-[45%] md:w-[31%]"
+                  onClickCapture={(ev) => {
+                    // Prevent click after a drag
+                    if (dragRef.current.moved) { ev.stopPropagation(); ev.preventDefault(); dragRef.current.moved = false; }
+                  }}
+                >
+                  <EventCard ev={e} copied={copied} onShare={share} onOpen={() => setSelected(e)} onAdd={onAdd} />
+                </div>
+              ))}
             </div>
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-20 sm:w-28 bg-gradient-to-l from-white via-white/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-16 sm:w-24 bg-gradient-to-l from-white via-white/70 to-transparent" />
           </div>
         )}
       </section>
@@ -571,6 +682,109 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
         <EventDetailModal ev={selected} onClose={() => setSelected(null)} copied={copied} onShare={share} onAdd={onAdd} />
       )}
     </>
+  );
+}
+
+function CityFilter({
+  cities, value, onChange, allLabel, searchPlaceholder,
+}: {
+  cities: string[];
+  value: string;
+  onChange: (v: string) => void;
+  allLabel: string;
+  searchPlaceholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onMouseDown(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setOpen(false); }
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const filtered = cities.filter((c) => norm(c).includes(norm(search.trim())));
+  const label = value === "all" ? allLabel : value;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider transition ${
+          value === "all"
+            ? "bg-stone-100 text-stone-600 hover:bg-stone-200"
+            : "bg-[#8b5a3c] text-white hover:bg-[#6b4423]"
+        }`}
+      >
+        <span className="max-w-[140px] truncate">{label}</span>
+        <ChevronDown className="h-3 w-3" strokeWidth={3} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm sm:hidden" onClick={() => setOpen(false)} />
+          <div
+            className="
+              z-50 bg-white rounded-2xl shadow-2xl border border-stone-100 overflow-hidden
+              fixed left-2 right-2 top-20 sm:top-auto
+              sm:absolute sm:left-0 sm:right-auto sm:top-full sm:mt-2 sm:w-[260px]
+              animate-in fade-in slide-in-from-top-2 duration-150
+            "
+          >
+            <div className="p-2 border-b border-stone-100">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" strokeWidth={2.5} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  className="w-full pl-8 pr-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-sm focus:outline-none focus:border-[#8b5a3c] focus:bg-white"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <ul className="max-h-[300px] overflow-y-auto py-1">
+              <li>
+                <button
+                  onClick={() => { onChange("all"); setOpen(false); setSearch(""); }}
+                  className={`w-full text-left px-4 py-2 text-sm font-semibold transition ${
+                    value === "all" ? "bg-[#fbf6ee] text-[#8b5a3c]" : "text-stone-700 hover:bg-stone-50"
+                  }`}
+                >
+                  {allLabel}
+                </button>
+              </li>
+              {filtered.map((c) => (
+                <li key={c}>
+                  <button
+                    onClick={() => { onChange(c); setOpen(false); setSearch(""); }}
+                    className={`w-full text-left px-4 py-2 text-sm transition ${
+                      value === c ? "bg-[#fbf6ee] text-[#8b5a3c] font-semibold" : "text-stone-700 hover:bg-stone-50"
+                    }`}
+                  >
+                    {c}
+                  </button>
+                </li>
+              ))}
+              {filtered.length === 0 && (
+                <li className="px-4 py-3 text-sm text-stone-400 text-center">—</li>
+              )}
+            </ul>
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 

@@ -18,16 +18,16 @@ export function NavBar({ username, fullName, avatarUrl, onSignOut }: Props) {
 
   return (
     <header className="bg-[#f5efe2]/95 backdrop-blur-md border-b border-[#8b5a3c]/15 sticky top-0 z-10">
-      <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4 h-14 flex items-center justify-between gap-2 sm:gap-4">
 
         <Link
           href="/"
-          className="font-extrabold text-[#2a1f17] tracking-tight text-2xl shrink-0 select-none"
+          className="font-extrabold text-[#2a1f17] tracking-tight text-xl sm:text-2xl shrink-0 select-none"
         >
           Agenddi<span className="text-[#9a3c2b]">.</span>
         </Link>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           <button
             onClick={() => setLang(lang === "en" ? "es" : "en")}
             className="text-[10px] font-bold tracking-wider text-[#8b5a3c]/70 hover:text-[#8b5a3c] transition-colors px-1.5 py-1 rounded cursor-pointer"

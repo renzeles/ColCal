@@ -27,7 +27,9 @@ const dict: Dict = {
   // ── NearbyEvents ──
   ne_label: { en: "Near you", es: "Cerca tuyo" },
   ne_title: { en: "Events near you", es: "Eventos cerca tuyo" },
-  ne_count: { en: "{n} events across the country", es: "{n} eventos en todo el país" },
+  ne_count: { en: "{n} events across the world", es: "{n} eventos en todo el mundo" },
+  ne_city_all: { en: "All cities", es: "Todas las ciudades" },
+  ne_city_search: { en: "Find city…", es: "Buscar ciudad…" },
   ne_all: { en: "All", es: "Todos" },
   ne_add: { en: "Add to Agenddi", es: "Agregar a Agenddi" },
   ne_add_cal: { en: "Add to calendar", es: "Agregar al calendario" },
@@ -47,7 +49,8 @@ const dict: Dict = {
 
   // ── Main page (HomePage) ──
   page_tab_discover: { en: "Discover", es: "Descubrí" },
-  page_tab_events: { en: "My events", es: "Mis eventos" },
+  page_tab_events: { en: "Events", es: "Eventos" },
+  filter_all: { en: "All", es: "Todos" },
   page_tab_agenddi: { en: "My Agenddi", es: "Mi Agenddi" },
   page_tab_calendar: { en: "Calendar", es: "Calendario" },
   agenda_sub_contacts: { en: "Contacts", es: "Contactos" },
@@ -57,6 +60,12 @@ const dict: Dict = {
   create_event_cta: { en: "Create", es: "Crear" },
   create_event_sub: { en: "Share with your people", es: "Compartilo con tu gente" },
   channels_empty: { en: "No channels yet. Create one to share events with a group.", es: "Todavía no tenés canales. Creá uno para compartir eventos con un grupo." },
+  contacts_search_people: { en: "Search people…", es: "Buscar personas…" },
+  channels_search: { en: "Search channels…", es: "Buscar canales…" },
+  join: { en: "Join", es: "Unirme" },
+  joined: { en: "Joined", es: "Unido" },
+  contacts_search_empty: { en: "No people found.", es: "No se encontraron personas." },
+  channels_search_empty: { en: "No channels found.", es: "No se encontraron canales." },
   channels_create: { en: "New channel", es: "Nuevo canal" },
   channel_name: { en: "Channel name", es: "Nombre del canal" },
   channel_desc: { en: "Description (optional)", es: "Descripción (opcional)" },

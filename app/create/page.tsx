@@ -764,13 +764,63 @@ export default function CreatePage() {
               )}
             </div>
 
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Ubicación (opcional)"
-              className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
-            />
+            {/* Location — paste a Google Maps URL or use current location */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wider">Ubicación</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1 min-w-0">
+                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[#8b5a3c] pointer-events-none" strokeWidth={2.5} />
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Pegá un link de Google Maps o escribí la dirección"
+                    className="w-full pl-11 pr-3 rounded-2xl bg-stone-50 border-2 border-stone-200 text-sm text-stone-800 focus:outline-none focus:border-[#8b5a3c] focus:bg-white transition"
+                    style={{ height: "3.25rem" }}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!navigator.geolocation) {
+                      toast.show("error", "Tu navegador no soporta geolocalización.");
+                      return;
+                    }
+                    navigator.geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        try {
+                          const r = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+                            { headers: { "Accept-Language": "es" } }
+                          );
+                          const data = await r.json();
+                          const addr = data.display_name as string | undefined;
+                          if (addr) {
+                            setLocation(addr);
+                            toast.show("success", "Ubicación actual cargada.");
+                          } else {
+                            setLocation(`https://www.google.com/maps?q=${latitude},${longitude}`);
+                            toast.show("success", "Coordenadas cargadas.");
+                          }
+                        } catch {
+                          setLocation(`https://www.google.com/maps?q=${latitude},${longitude}`);
+                          toast.show("success", "Coordenadas cargadas.");
+                        }
+                      },
+                      () => toast.show("error", "No se pudo obtener tu ubicación."),
+                      { timeout: 10000 }
+                    );
+                  }}
+                  className="shrink-0 px-4 rounded-2xl bg-stone-900 text-[#faf6ef] text-sm font-bold hover:bg-[#8b5a3c] transition btn-modern whitespace-nowrap flex items-center gap-1.5"
+                  style={{ height: "3.25rem" }}
+                  title="Usar mi ubicación actual"
+                >
+                  <MapPin className="h-4 w-4" strokeWidth={2.5} />
+                  <span className="hidden sm:inline">Mi ubicación</span>
+                </button>
+              </div>
+            </div>
 
             {/* Online toggle + capacity */}
             <div className="flex flex-wrap items-center gap-4">
@@ -798,62 +848,6 @@ export default function CreatePage() {
               )}
             </div>
 
-            {/* Coordinates — shown for physical events */}
-            {!isOnline && (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowCoords((v) => !v)}
-                  className="text-xs text-violet-600 hover:text-violet-700 transition"
-                >
-                  {showCoords ? "− Ocultar coordenadas" : "+ Agregar coordenadas (búsqueda por cercanía)"}
-                </button>
-                {showCoords && (
-                  <div className="mt-2 space-y-2">
-                    <p className="text-xs text-zinc-400">
-                      Necesario para aparecer en "Eventos cerca tuyo".
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs text-zinc-500 mb-1">Latitud</label>
-                        <input
-                          type="number"
-                          step="0.000001"
-                          value={latitude ?? ""}
-                          onChange={(e) => setLatitude(e.target.value ? Number(e.target.value) : null)}
-                          placeholder="-34.603722"
-                          className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-zinc-500 mb-1">Longitud</label>
-                        <input
-                          type="number"
-                          step="0.000001"
-                          value={longitude ?? ""}
-                          onChange={(e) => setLongitude(e.target.value ? Number(e.target.value) : null)}
-                          placeholder="-58.381592"
-                          className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!navigator.geolocation) return;
-                        navigator.geolocation.getCurrentPosition((pos) => {
-                          setLatitude(pos.coords.latitude);
-                          setLongitude(pos.coords.longitude);
-                        });
-                      }}
-                      className="text-xs text-violet-600 hover:text-violet-700 transition"
-                    >
-                      📍 Usar mi ubicación actual
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
 
             <textarea
               value={description}

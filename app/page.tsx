@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Calendar, Check, ChevronLeft, ChevronRight,
-  Pencil, Plus, Share2, Trash2, UserCheck,
+  Pencil, Plus, RotateCcw, Search, Share2, Trash2, UserCheck, UserPlus,
+  Send,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
@@ -25,6 +26,7 @@ type FeedItem = SentEvent & { creator: Profile };
 type RsvpStatus = "accepted" | "declined";
 type MainTab = "discover" | "mine" | "agenddi";
 type AgendaSub = "contacts" | "channels";
+type EventsFilter = "all" | "public" | "private";
 
 const DAYS_LABEL = ["S", "M", "T", "W", "T", "F", "S"];
 const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -160,15 +162,82 @@ function CalendarEventRow({ ev }: { ev: FeedItem }) {
 }
 
 
+// ─── Reusable bakery search input ────────────────────────────────────────────
+function BakerySearchBar({
+  value, onChange, placeholder, trailing,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <div className="flex gap-2">
+      <div className="relative flex-1 min-w-0">
+        <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-[18px] w-[18px] text-[#8b5a3c]" strokeWidth={2.5} />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-2xl bg-stone-50 border border-stone-200 text-[15px] text-stone-900 font-medium focus:outline-none focus:border-[#8b5a3c] focus:bg-white focus:ring-4 focus:ring-[#8b5a3c]/8 transition-all placeholder:text-stone-400 placeholder:font-normal"
+          style={{ paddingLeft: "3.25rem", paddingRight: "1rem", height: "3.25rem" }}
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange("")}
+        disabled={!value}
+        style={{ height: "3.25rem", width: "3.25rem" }}
+        className={`shrink-0 rounded-2xl border-2 flex items-center justify-center transition-all btn-modern ${
+          value
+            ? "bg-[#fbf6ee] border-[#8b5a3c]/30 text-[#8b5a3c] hover:bg-white hover:border-[#8b5a3c] hover:rotate-[-90deg]"
+            : "bg-stone-50 border-stone-200 text-stone-300 opacity-60 cursor-not-allowed"
+        }`}
+        aria-label="Clear"
+      >
+        <RotateCcw className="h-[18px] w-[18px]" strokeWidth={2.5} />
+      </button>
+      {trailing}
+    </div>
+  );
+}
+
 // ─── Contacts section ────────────────────────────────────────────────────────
 function ContactsSection({ userId, userProfile }: { userId: string; userProfile: Profile }) {
   const { t } = useT();
   const toast = useToast();
   const [mutuals, setMutuals] = useState<Profile[]>([]);
+  const [mutualIdSet, setMutualIdSet] = useState<Set<string>>(new Set());
   const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<Profile[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Search
+  const [query, setQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<Profile[] | null>(null);
+  const [searching, setSearching] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Invite to Agenddi
+  const [inviteCopied, setInviteCopied] = useState(false);
+
+  async function handleInvite() {
+    const url = `${window.location.origin}/login?ref=${userProfile.username ?? ""}`;
+    const text = `Sumate a Agenddi conmigo! ${url}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: "Agenddi", text, url }); return; } catch { /* cancelled */ }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 2000);
+      toast.show("success", "Link copied");
+    } catch {
+      toast.show("error", "Couldn't copy link");
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -188,6 +257,7 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
         ? []
         : (await supabase.from("profiles").select("*").in("id", mutualIds)).data ?? [];
       setMutuals((profiles as Profile[]) ?? []);
+      setMutualIdSet(new Set(mutualIds));
       setPendingIds(pending);
 
       // Load suggestions
@@ -199,6 +269,25 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
       setLoading(false);
     })();
   }, [userId]);
+
+  // Debounced people search
+  useEffect(() => {
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    const q = query.trim();
+    if (!q) { setSearchResults(null); setSearching(false); return; }
+    setSearching(true);
+    searchTimer.current = setTimeout(async () => {
+      const supabase = createClient();
+      const { data } = await supabase
+        .from("profiles")
+        .select("*")
+        .or(`username.ilike.%${q}%,full_name.ilike.%${q}%`)
+        .neq("id", userId)
+        .limit(30);
+      setSearchResults((data as Profile[]) ?? []);
+      setSearching(false);
+    }, 300);
+  }, [query, userId]);
 
   async function sendRequest(target: Profile) {
     if (busyId) return;
@@ -230,62 +319,122 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
 
   if (loading) return <div className="text-sm text-stone-500 text-center py-8">{t("page_loading")}</div>;
 
+  const isSearching = query.trim().length > 0;
+
+  function renderUserRow(p: Profile) {
+    const isMutual = mutualIdSet.has(p.id);
+    const isPending = pendingIds.has(p.id);
+    return (
+      <li key={p.id} className="bg-white rounded-xl card-shadow p-3 flex items-center gap-3">
+        <Link href={`/u/${p.username}`}>
+          <Avatar src={p.avatar_url} name={p.full_name} size="md" />
+        </Link>
+        <Link href={`/u/${p.username}`} className="flex-1 min-w-0 hover:underline">
+          <div className="font-medium text-stone-900 truncate">{p.full_name ?? p.username}</div>
+          <div className="text-xs text-stone-500 truncate">@{p.username}</div>
+        </Link>
+        {isMutual ? (
+          <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-default">
+            <UserCheck className="h-3.5 w-3.5" /> {t("contacts_contact")}
+          </span>
+        ) : isPending ? (
+          <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-100 text-stone-500 cursor-default">
+            {t("contacts_pending")}
+          </span>
+        ) : (
+          <button
+            onClick={() => sendRequest(p)}
+            disabled={busyId === p.id}
+            className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-900 text-[#faf6ef] hover:bg-[#8b5a3c] transition disabled:opacity-60"
+          >
+            <UserPlus className="h-3.5 w-3.5" /> {t("contacts_add")}
+          </button>
+        )}
+      </li>
+    );
+  }
+
+  const inviteButton = (
+    <button
+      onClick={handleInvite}
+      style={{ height: "3.25rem", width: "3.25rem" }}
+      className="shrink-0 rounded-2xl bg-stone-900 text-[#faf6ef] flex items-center justify-center hover:bg-[#8b5a3c] transition btn-modern"
+      aria-label={t("contacts_invite_short")}
+      title={inviteCopied ? t("contacts_copied") : t("contacts_invite_short")}
+    >
+      {inviteCopied ? (
+        <Check className="h-[18px] w-[18px]" strokeWidth={2.5} />
+      ) : (
+        <Send className="h-[18px] w-[18px]" strokeWidth={2.5} />
+      )}
+    </button>
+  );
+
   return (
     <div className="space-y-4">
       <Toast state={toast.state} />
 
-      {/* Suggestions strip — no title */}
-      {suggestions.length > 0 && (
-        <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 snap-x">
-          {suggestions.map((p) => (
-            <div key={p.id} className="snap-start shrink-0 w-32 bg-white rounded-2xl card-shadow p-3 flex flex-col items-center text-center">
-              <Link href={`/u/${p.username}`} className="mb-2">
-                <Avatar src={p.avatar_url} name={p.full_name} size="lg" />
-              </Link>
-              <Link href={`/u/${p.username}`} className="text-xs font-semibold text-stone-900 truncate w-full hover:underline">
-                {p.full_name ?? p.username}
-              </Link>
-              <p className="text-[10px] text-stone-500 truncate w-full">@{p.username}</p>
-              {pendingIds.has(p.id) ? (
-                <span className="mt-2 w-full text-center text-[10px] font-semibold text-stone-500 px-2 py-1.5 rounded-full bg-stone-100">
-                  {t("contacts_pending")}
-                </span>
-              ) : (
-                <button
-                  onClick={() => sendRequest(p)}
-                  disabled={busyId === p.id}
-                  className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-[#8b5a3c] px-2 py-1.5 rounded-full transition cursor-pointer disabled:opacity-60"
-                >
-                  + {t("contacts_add")}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      <BakerySearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder={t("contacts_search_people")}
+        trailing={inviteButton}
+      />
 
-      {/* Mutuals list */}
-      {mutuals.length === 0 ? (
-        <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
-          {t("contacts_empty_contacts")}
-        </div>
+      {/* Search results */}
+      {isSearching ? (
+        searching ? (
+          <div className="text-sm text-stone-500 text-center py-8">{t("contacts_searching")}</div>
+        ) : (searchResults?.length ?? 0) === 0 ? (
+          <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
+            {t("contacts_search_empty")}
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {(searchResults ?? []).map((p) => renderUserRow(p))}
+          </ul>
+        )
       ) : (
-        <ul className="space-y-2">
-          {mutuals.map((p) => (
-            <li key={p.id} className="bg-white rounded-xl card-shadow p-3 flex items-center gap-3">
-              <Link href={`/u/${p.username}`}>
-                <Avatar src={p.avatar_url} name={p.full_name} size="md" />
-              </Link>
-              <Link href={`/u/${p.username}`} className="flex-1 min-w-0 hover:underline">
-                <div className="font-medium text-stone-900 truncate">{p.full_name ?? p.username}</div>
-                <div className="text-xs text-stone-500 truncate">@{p.username}</div>
-              </Link>
-              <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-default">
-                <UserCheck className="h-3.5 w-3.5" /> {t("contacts_contact")}
-              </span>
-            </li>
-          ))}
-        </ul>
+        <>
+          {/* Suggestions strip */}
+          {suggestions.length > 0 && (
+            <div className="flex gap-3 overflow-x-auto pb-1 -mx-4 px-4 snap-x">
+              {suggestions.map((p) => (
+                <div key={p.id} className="snap-start shrink-0 w-32 bg-white rounded-2xl card-shadow p-3 flex flex-col items-center text-center">
+                  <Link href={`/u/${p.username}`} className="mb-2">
+                    <Avatar src={p.avatar_url} name={p.full_name} size="lg" />
+                  </Link>
+                  <Link href={`/u/${p.username}`} className="text-xs font-semibold text-stone-900 truncate w-full hover:underline">
+                    {p.full_name ?? p.username}
+                  </Link>
+                  <p className="text-[10px] text-stone-500 truncate w-full">@{p.username}</p>
+                  {pendingIds.has(p.id) ? (
+                    <span className="mt-2 w-full text-center text-[10px] font-semibold text-stone-500 px-2 py-1.5 rounded-full bg-stone-100">
+                      {t("contacts_pending")}
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => sendRequest(p)}
+                      disabled={busyId === p.id}
+                      className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-[#8b5a3c] px-2 py-1.5 rounded-full transition disabled:opacity-60"
+                    >
+                      + {t("contacts_add")}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Mutuals list */}
+          {mutuals.length === 0 ? (
+            <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
+              {t("contacts_empty_contacts")}
+            </div>
+          ) : (
+            <ul className="space-y-2">{mutuals.map((p) => renderUserRow(p))}</ul>
+          )}
+        </>
       )}
     </div>
   );
@@ -300,6 +449,7 @@ export default function HomePage() {
 
   const [mainTab, setMainTab] = useState<MainTab>("discover");
   const [agendaSub, setAgendaSub] = useState<AgendaSub>("contacts");
+  const [eventsFilter, setEventsFilter] = useState<EventsFilter>("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
@@ -460,7 +610,7 @@ export default function HomePage() {
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-5">
         {/* Main tab bar — modern bold */}
-        <div className="flex gap-6 border-b border-stone-200/70">
+        <div className="flex gap-4 sm:gap-6 border-b border-stone-200/70">
           {(["discover", "mine", "agenddi"] as const).map((tab) => {
             const labels = {
               discover: t("page_tab_discover"),
@@ -471,7 +621,7 @@ export default function HomePage() {
               <button
                 key={tab}
                 onClick={() => setMainTab(tab)}
-                className={`relative pb-3 pt-1 text-[15px] font-extrabold tracking-tight transition-colors cursor-pointer ${
+                className={`relative pb-3 pt-1 text-sm sm:text-[15px] font-extrabold tracking-tight transition-colors whitespace-nowrap ${
                   mainTab === tab
                     ? "text-stone-900"
                     : "text-stone-400 hover:text-stone-700"
@@ -491,49 +641,81 @@ export default function HomePage() {
           <NearbyEvents onAdd={addDemoEvent} />
         )}
 
-        {/* ── Mis eventos ── */}
-        {mainTab === "mine" && (
+        {/* ── Events ── */}
+        {mainTab === "mine" && (() => {
+          const combinedEvents = [...mineItems, ...privateItems].sort(
+            (a, b) => b.start_at.localeCompare(a.start_at)
+          );
+          const visibleEvents = combinedEvents.filter((ev) =>
+            eventsFilter === "all" ? true : ev.visibility === eventsFilter
+          );
+          return (
           <div className="space-y-5">
-            {/* Minimalist Create button */}
-            <div className="flex justify-end">
+            {/* Filter (left) + Create (right) */}
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="inline-flex rounded-full bg-stone-100 p-1">
+                {(["all", "public", "private"] as const).map((f) => {
+                  const labels = {
+                    all: t("filter_all"),
+                    public: t("page_filter_public"),
+                    private: t("page_filter_private"),
+                  };
+                  return (
+                    <button
+                      key={f}
+                      onClick={() => setEventsFilter(f)}
+                      className={`px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition ${
+                        eventsFilter === f
+                          ? "bg-[#8b5a3c] text-white shadow-sm"
+                          : "text-stone-600 hover:text-stone-900"
+                      }`}
+                    >
+                      {labels[f]}
+                    </button>
+                  );
+                })}
+              </div>
               <Link
                 href="/create"
-                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-[#8b5a3c] text-white text-sm font-semibold hover:bg-[#6b4423] transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 h-9 rounded-full bg-stone-900 text-[#faf6ef] text-sm font-semibold hover:bg-[#8b5a3c] transition btn-modern"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} /> {t("create_event_cta")}
               </Link>
             </div>
 
-            {/* Calendar */}
-            {!loading && <CalendarSection events={allMyEvents} />}
+            {/* Calendar (filtered) */}
+            {!loading && <CalendarSection events={visibleEvents} />}
 
             {/* Events list */}
             {loading ? (
               <FeedSkeleton />
-            ) : mineItems.length === 0 ? (
+            ) : visibleEvents.length === 0 ? (
               <div className="text-sm text-stone-500 text-center py-12 bg-white rounded-2xl card-shadow">
                 {t("page_no_mine")}
               </div>
             ) : (
               <ul className="space-y-3">
-                {mineItems.map((ev) => {
+                {visibleEvents.map((ev) => {
                   const evStyles = getEventColorStyles(ev.color);
                   const acceptedCount = rsvpCounts.get(ev.id) ?? 0;
+                  const isMine = ev.creator_id === user.id;
                   const isJoined = ev.source === "joined";
+                  const canEdit = isMine && !isJoined;
+                  const canDelete = isMine;
                   return (
                     <li
                       key={ev.id}
                       className={`rounded-2xl overflow-hidden card-shadow card-shadow-hover ${evStyles.card} border ${evStyles.border}`}
                     >
                       {ev.image_url && (
-                        <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="cursor-pointer">
+                        <Link href={`/u/${ev.creator.username}/e/${ev.id}`}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={ev.image_url} alt={ev.title} className="w-full h-44 object-cover" />
                         </Link>
                       )}
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2">
-                          <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="block hover:underline cursor-pointer flex-1 min-w-0">
+                          <Link href={`/u/${ev.creator.username}/e/${ev.id}`} className="block hover:underline flex-1 min-w-0">
                             <h3 className="text-lg font-extrabold text-stone-900 tracking-tight">{ev.title}</h3>
                           </Link>
                           <div className="flex items-center gap-1 shrink-0">
@@ -543,15 +725,20 @@ export default function HomePage() {
                               </span>
                             )}
                             {isJoined && (
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fbf6ee] text-[#8b5a3c]">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fbf6ee] text-[#8b5a3c]">
                                 Joined
                               </span>
                             )}
-                            {!isJoined && (
+                            {!isMine && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700">
+                                Invited
+                              </span>
+                            )}
+                            {canEdit && (
                               <button
                                 onClick={() => router.push(`/create?edit=${ev.id}`)}
                                 aria-label="Edit"
-                                className="h-7 w-7 flex items-center justify-center rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition cursor-pointer"
+                                className="h-7 w-7 flex items-center justify-center rounded-full text-stone-400 hover:text-stone-900 hover:bg-stone-100 transition"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
                               </button>
@@ -559,18 +746,20 @@ export default function HomePage() {
                             <button
                               onClick={() => shareEvent(ev)}
                               aria-label="Share"
-                              className="h-7 w-7 flex items-center justify-center rounded-full text-stone-400 hover:text-[#8b5a3c] hover:bg-[#fbf6ee] transition cursor-pointer"
+                              className="h-7 w-7 flex items-center justify-center rounded-full text-stone-400 hover:text-[#8b5a3c] hover:bg-[#fbf6ee] transition"
                             >
                               <Share2 className="h-3.5 w-3.5" />
                             </button>
-                            <button
-                              onClick={() => deleteMineEvent(ev.id, ev.title)}
-                              disabled={deletingId === ev.id}
-                              aria-label="Delete"
-                              className="h-7 w-7 flex items-center justify-center rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50 cursor-pointer"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            {canDelete && (
+                              <button
+                                onClick={() => deleteMineEvent(ev.id, ev.title)}
+                                disabled={deletingId === ev.id}
+                                aria-label="Delete"
+                                className="h-7 w-7 flex items-center justify-center rounded-full text-red-400 hover:text-red-600 hover:bg-red-50 transition disabled:opacity-50"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <p className="text-xs text-stone-500 mt-1.5 flex items-center gap-1">
@@ -587,7 +776,8 @@ export default function HomePage() {
               </ul>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ── Mi Agenddi ── */}
         {mainTab === "agenddi" && (

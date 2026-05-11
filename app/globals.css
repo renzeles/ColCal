@@ -83,6 +83,10 @@ button:disabled,
 }
 
 /* Cleaner modern background — subtle warm gradient instead of dot pattern */
+/* Hide scrollbar for drag carousels */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 .bakery-bg {
   background:
     radial-gradient(ellipse at top, rgba(255, 255, 255, 0.6) 0%, transparent 60%),
