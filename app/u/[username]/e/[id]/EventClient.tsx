@@ -82,7 +82,7 @@ export function EventClient({ event, creator }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bakery-bg">
       {user ? (
         <NavBar
           username={user.profile.username}

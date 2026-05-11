@@ -98,7 +98,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bakery-bg">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}

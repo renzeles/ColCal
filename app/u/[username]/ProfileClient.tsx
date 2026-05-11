@@ -144,7 +144,7 @@ export function ProfileClient({ username, initialProfile }: Props) {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+      <div className="min-h-screen bakery-bg">
         {user ? (
           <NavBar
             username={user.profile.username}
@@ -165,7 +165,7 @@ export function ProfileClient({ username, initialProfile }: Props) {
   const isMe = user?.id === profile.id;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-violet-50">
+    <div className="min-h-screen bakery-bg">
       {user ? (
         <NavBar
           username={user.profile.username}

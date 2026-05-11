@@ -27,8 +27,16 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-[#f5efe2] text-stone-900 antialiased">
+        {/* Mobile-only top banner */}
+        <Link
+          href="/for-iphone"
+          className="sm:hidden block text-center bg-[#fbf6ee] border-b border-[#8b5a3c]/15 py-1.5 text-[11px] font-bold tracking-wider uppercase text-[#8b5a3c] hover:bg-[#f5e9d4] transition-colors"
+        >
+          📱 For iPhone — install guide ↗
+        </Link>
         {children}
-        <footer className="text-center py-6 px-4">
+        {/* Desktop footer link */}
+        <footer className="hidden sm:block text-center py-6 px-4">
           <Link
             href="/for-iphone"
             className="text-[11px] font-semibold tracking-wider uppercase text-stone-400 hover:text-[#8b5a3c] transition-colors"
