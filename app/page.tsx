@@ -17,6 +17,7 @@ import { Landing } from "@/components/Landing";
 import { FeedSkeleton } from "@/components/Skeleton";
 import { NearbyEvents } from "@/components/NearbyEvents";
 import { ChannelsSection } from "@/components/ChannelsSection";
+import { ShareEventModal } from "@/components/ShareEventModal";
 import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 import type { DemoEvent } from "@/components/NearbyEvents";
@@ -450,6 +451,7 @@ export default function HomePage() {
   const [mainTab, setMainTab] = useState<MainTab>("discover");
   const [agendaSub, setAgendaSub] = useState<AgendaSub>("contacts");
   const [eventsFilter, setEventsFilter] = useState<EventsFilter>("all");
+  const [sharingEvent, setSharingEvent] = useState<FeedItem | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [privateItems, setPrivateItems] = useState<FeedItem[]>([]);
@@ -529,18 +531,8 @@ export default function HomePage() {
     })();
   }, [user]);
 
-  async function shareEvent(ev: FeedItem) {
-    const url = `${window.location.origin}/u/${ev.creator.username}/e/${ev.id}`;
-    const text = `${ev.title} · ${formatDate(ev.start_at)}`;
-    if (navigator.share) {
-      try { await navigator.share({ title: ev.title, text, url }); return; } catch { /* */ }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      toast.show("success", "Link copied");
-    } catch {
-      toast.show("error", "Could not share");
-    }
+  function shareEvent(ev: FeedItem) {
+    setSharingEvent(ev);
   }
 
   async function deleteMineEvent(evId: string, title: string) {
@@ -825,6 +817,18 @@ export default function HomePage() {
       </main>
 
       <Toast state={toast.state} />
+
+      {sharingEvent && (
+        <ShareEventModal
+          event={sharingEvent}
+          userId={user.id}
+          userProfile={user.profile as Profile}
+          onClose={() => setSharingEvent(null)}
+          onSuccess={(count) =>
+            toast.show("success", `${t("share_done", { n: count })}`)
+          }
+        />
+      )}
     </div>
   );
 }

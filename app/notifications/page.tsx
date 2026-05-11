@@ -264,5 +264,38 @@ function NotificationItem({
     );
   }
 
+  if (notif.type === "event_share") {
+    return (
+      <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-start gap-3">
+        <Link href={`/u/${d.shared_by_username}`}>
+          <Avatar src={d.shared_by_avatar || null} name={d.shared_by_name} size="md" />
+        </Link>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-zinc-900">
+            <Link href={`/u/${d.shared_by_username}`} className="font-semibold hover:underline">
+              {d.shared_by_name || d.shared_by_username}
+            </Link>
+            {" "}shared an event with you:
+          </p>
+          <Link
+            href={d.event_url || "#"}
+            className="block mt-2 px-3 py-2 rounded-xl bg-[#fbf6ee] border border-[#8b5a3c]/15 hover:bg-white transition"
+          >
+            <p className="text-sm font-bold text-stone-900 truncate">{d.event_title}</p>
+            {d.event_start && (
+              <p className="text-xs text-stone-500 mt-0.5">
+                {new Date(d.event_start).toLocaleString("en-GB", {
+                  weekday: "short", day: "numeric", month: "short",
+                  hour: "2-digit", minute: "2-digit", hour12: false,
+                })}
+              </p>
+            )}
+          </Link>
+          <p className="text-xs text-zinc-400 mt-2">{timeAgo(notif.created_at)}</p>
+        </div>
+      </li>
+    );
+  }
+
   return null;
 }

@@ -189,6 +189,9 @@ function NotifRow({ notif, onClick }: { notif: Notification; onClick: () => void
   } else if (notif.type === "event_invite") {
     icon = <div className="h-9 w-9 rounded-full bg-[#fbf6ee] flex items-center justify-center"><Bell className="h-4 w-4 text-[#8b5a3c]" /></div>;
     body = <><span className="font-bold">{d.creator_name || d.creator_username}</span> invited you to <span className="font-bold">{d.event_title}</span>.</>;
+  } else if (notif.type === "event_share") {
+    icon = <Avatar src={d.shared_by_avatar || null} name={d.shared_by_name} size="sm" />;
+    body = <><span className="font-bold">{d.shared_by_name || d.shared_by_username}</span> shared an event: <span className="font-bold">{d.event_title}</span>.</>;
   } else {
     return null;
   }
