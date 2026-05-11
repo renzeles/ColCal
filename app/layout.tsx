@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,7 +26,17 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-[#f5efe2] text-stone-900 antialiased">{children}</body>
+      <body className="min-h-full bg-[#f5efe2] text-stone-900 antialiased">
+        {children}
+        <footer className="text-center py-6 px-4">
+          <Link
+            href="/for-iphone"
+            className="text-[11px] font-semibold tracking-wider uppercase text-stone-400 hover:text-[#8b5a3c] transition-colors"
+          >
+            for iPhone ↗
+          </Link>
+        </footer>
+      </body>
     </html>
   );
 }
