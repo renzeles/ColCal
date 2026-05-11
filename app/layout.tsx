@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { IPhoneInstallPopup } from "@/components/IPhoneInstallPopup";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -25,7 +26,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-full bg-[#f5efe2] text-stone-900 antialiased">{children}</body>
+      <body className="min-h-full bg-[#f5efe2] text-stone-900 antialiased">
+        {children}
+        <IPhoneInstallPopup />
+      </body>
     </html>
   );
 }

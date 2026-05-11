@@ -146,7 +146,7 @@ export default function NotificationsPage() {
           <div className="text-sm text-zinc-500 text-center py-12">Cargando…</div>
         ) : notifications.length === 0 ? (
           <div className="text-sm text-zinc-500 text-center py-16 bg-white rounded-2xl border border-zinc-200">
-            <Bell className="h-8 w-8 mx-auto mb-3 text-zinc-300" />
+            <Bell className="h-8 w-8 mx-auto mb-3 text-stone-300" />
             No tenés notificaciones todavía.
           </div>
         ) : (
@@ -184,18 +184,18 @@ function NotificationItem({
 
   if (notif.type === "contact_request") {
     return (
-      <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-start gap-3">
+      <li className="bg-white rounded-2xl card-shadow p-4 flex items-start gap-3">
         <Link href={`/u/${d.from_username}`}>
           <Avatar src={d.from_avatar || null} name={d.from_name} size="md" />
         </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-zinc-900">
+          <p className="text-sm text-stone-900">
             <Link href={`/u/${d.from_username}`} className="font-semibold hover:underline">
               {d.from_name || d.from_username}
             </Link>
             {" "}quiere conectar contigo.
           </p>
-          <p className="text-xs text-zinc-400 mt-0.5">{timeAgo(notif.created_at)}</p>
+          <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
           <div className="flex gap-2 mt-3">
             <button
               onClick={onAccept}
@@ -219,18 +219,18 @@ function NotificationItem({
 
   if (notif.type === "contact_accepted" || notif.type === "contact_accepted_done") {
     return (
-      <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
+      <li className="bg-white rounded-2xl card-shadow p-4 flex items-center gap-3">
         <Link href={`/u/${d.by_username}`}>
           <Avatar src={d.by_avatar || null} name={d.by_name} size="md" />
         </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-zinc-900">
+          <p className="text-sm text-stone-900">
             <Link href={`/u/${d.by_username}`} className="font-semibold hover:underline">
               {d.by_name || d.by_username}
             </Link>
             {" "}aceptó tu solicitud.
           </p>
-          <p className="text-xs text-zinc-400 mt-0.5">{timeAgo(notif.created_at)}</p>
+          <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
         </div>
         <UserCheck className="h-5 w-5 text-emerald-500 shrink-0" />
       </li>
@@ -248,17 +248,17 @@ function NotificationItem({
 
   if (notif.type === "event_invite") {
     return (
-      <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-center gap-3">
+      <li className="bg-white rounded-2xl card-shadow p-4 flex items-center gap-3">
         <div className="h-10 w-10 rounded-full bg-[#fbf6ee] text-[#8b5a3c] flex items-center justify-center shrink-0">
           <Bell className="h-4 w-4" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-zinc-900">
+          <p className="text-sm text-stone-900">
             <span className="font-semibold">{d.creator_name || d.creator_username}</span>
             {" "}te invitó a{" "}
             <span className="font-semibold">{d.event_title}</span>.
           </p>
-          <p className="text-xs text-zinc-400 mt-0.5">{timeAgo(notif.created_at)}</p>
+          <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
         </div>
       </li>
     );
@@ -266,12 +266,12 @@ function NotificationItem({
 
   if (notif.type === "event_share") {
     return (
-      <li className="bg-white rounded-xl border border-zinc-200 p-4 flex items-start gap-3">
+      <li className="bg-white rounded-2xl card-shadow p-4 flex items-start gap-3">
         <Link href={`/u/${d.shared_by_username}`}>
           <Avatar src={d.shared_by_avatar || null} name={d.shared_by_name} size="md" />
         </Link>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-zinc-900">
+          <p className="text-sm text-stone-900">
             <Link href={`/u/${d.shared_by_username}`} className="font-semibold hover:underline">
               {d.shared_by_name || d.shared_by_username}
             </Link>
@@ -291,7 +291,7 @@ function NotificationItem({
               </p>
             )}
           </Link>
-          <p className="text-xs text-zinc-400 mt-2">{timeAgo(notif.created_at)}</p>
+          <p className="text-xs text-stone-400 mt-2">{timeAgo(notif.created_at)}</p>
         </div>
       </li>
     );

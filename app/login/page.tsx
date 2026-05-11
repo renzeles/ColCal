@@ -89,7 +89,7 @@ function LoginContent() {
           </p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-xl border border-white/60 rounded-2xl shadow-lg p-6">
+        <div className="bg-white rounded-3xl card-shadow p-6">
           {error && (
             <div role="alert" className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm text-center">
               {error}
@@ -106,7 +106,7 @@ function LoginContent() {
               <button
                 onClick={() => signInOAuth("google")}
                 disabled={loading !== null}
-                className="w-full h-12 rounded-lg bg-white border border-zinc-300 text-zinc-900 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-zinc-50 disabled:opacity-60"
+                className="w-full h-12 rounded-2xl bg-white border-2 border-stone-200 text-stone-900 font-bold text-sm flex items-center justify-center gap-2 hover:border-[#8b5a3c] hover:bg-[#fbf6ee] transition disabled:opacity-60 btn-modern"
               >
                 <svg className="h-5 w-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -120,7 +120,7 @@ function LoginContent() {
               <button
                 onClick={() => signInOAuth("azure")}
                 disabled={loading !== null}
-                className="w-full h-12 rounded-lg bg-white border border-zinc-300 text-zinc-900 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-zinc-50 disabled:opacity-60"
+                className="w-full h-12 rounded-2xl bg-white border-2 border-stone-200 text-stone-900 font-bold text-sm flex items-center justify-center gap-2 hover:border-[#8b5a3c] hover:bg-[#fbf6ee] transition disabled:opacity-60 btn-modern"
               >
                 <svg className="h-5 w-5" viewBox="0 0 23 23">
                   <path fill="#f35325" d="M1 1h10v10H1z"/>
@@ -139,7 +139,7 @@ function LoginContent() {
 
               <button
                 onClick={() => { setMode("signin"); setError(null); }}
-                className="w-full h-11 rounded-lg bg-zinc-900 text-white font-semibold text-sm hover:bg-zinc-800 transition"
+                className="w-full h-12 rounded-2xl bg-stone-900 text-[#faf6ef] font-extrabold text-sm tracking-tight hover:bg-[#8b5a3c] transition btn-modern"
               >
                 Entrar con email y contraseña
               </button>
@@ -152,7 +152,7 @@ function LoginContent() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Nombre (opcional)"
-                  className="w-full px-3 py-2.5 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:bg-white focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
                 />
               )}
               <input
@@ -161,7 +161,7 @@ function LoginContent() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Email"
                 required
-                className="w-full px-3 py-2.5 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:bg-white focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
               />
               <input
                 type="password"
@@ -170,12 +170,12 @@ function LoginContent() {
                 placeholder="Contraseña"
                 required
                 minLength={6}
-                className="w-full px-3 py-2.5 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:bg-white focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
               />
               <button
                 type="submit"
                 disabled={loading !== null}
-                className="w-full h-11 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-60"
+                className="w-full h-12 rounded-2xl bg-stone-900 text-[#faf6ef] font-extrabold text-sm tracking-tight hover:bg-[#8b5a3c] transition disabled:opacity-60 btn-modern"
               >
                 {loading === "email" ? "Cargando…" : mode === "signin" ? "Entrar" : "Crear cuenta"}
               </button>

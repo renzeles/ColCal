@@ -502,6 +502,8 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
   // Reset scroll when filter changes
   useEffect(() => {
     trackRef.current?.scrollTo({ left: 0, behavior: "smooth" });
+    pauseAutoRotate(3500);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, pickedDate, selectedCity]);
 
   function getStride(): number {
@@ -557,7 +559,7 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
     const el = trackRef.current;
     if (!el) return;
     const dx = e.pageX - d.startX;
-    if (Math.abs(dx) > 4) d.moved = true;
+    if (Math.abs(dx) > 8) d.moved = true;
     el.scrollLeft = d.startScroll - dx;
   }
   function endDrag() { dragRef.current.down = false; }
