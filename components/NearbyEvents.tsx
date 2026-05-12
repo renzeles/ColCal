@@ -22,6 +22,8 @@ export type DemoEvent = {
   endISO: string;
   spots: number;
   attendees: string[];
+  ticketUrl?: string;
+  ticketLabel?: "ticket" | "reserve";
 };
 
 // ── Image pool by category ───────────────────────────────────────────────────
@@ -345,9 +347,22 @@ function EventDetailModal({
             </div>
           </div>
 
-          <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${spotsClass}`}>
-            {ev.spots === 1 ? t("ne_spot_one") : t("ne_spot_many", { n: ev.spots })}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`inline-block text-xs font-semibold px-2.5 py-1 rounded-full ${spotsClass}`}>
+              {ev.spots === 1 ? t("ne_spot_one") : t("ne_spot_many", { n: ev.spots })}
+            </span>
+            {ev.ticketUrl && (
+              <a
+                href={ev.ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-[#8b5a3c] text-white hover:bg-[#6b4423] transition"
+              >
+                {ev.ticketLabel === "reserve" ? "🍽️ Reserve" : "🎫 Get ticket"}
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
 
           {ev.attendees.length > 0 && (
             <div>
@@ -822,9 +837,15 @@ function EventCard({
 }) {
   return (
     <div className="rounded-2xl overflow-hidden bg-white card-shadow card-shadow-hover flex flex-col h-full">
-      <button className="text-left w-full cursor-pointer" onClick={onOpen}>
+      <button className="text-left w-full cursor-pointer relative" onClick={onOpen}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ev.image} alt={ev.title} className="w-full h-36 sm:h-40 object-cover" loading="lazy" />
+        {ev.ticketUrl && (
+          <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf6ef]/95 text-[#8b5a3c] shadow-sm">
+            {ev.ticketLabel === "reserve" ? "🍽️" : "🎫"}
+            <span className="uppercase tracking-wider">{ev.ticketLabel === "reserve" ? "Reserve" : "Ticket"}</span>
+          </span>
+        )}
 
         <div className="px-4 pt-3 pb-2">
           <h4 className="font-bold text-stone-900 text-base leading-snug line-clamp-2" style={{ fontFamily: "var(--font-serif)" }}>

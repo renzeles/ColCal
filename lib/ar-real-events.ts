@@ -252,6 +252,55 @@ const VENUES: Venue[] = [
 
   // ── Mesopotamia ──
   { name: "Parque Nacional Iguazú", hood: "Cataratas", city: "Puerto Iguazú", types: ["outdoor", "adventure"], base: 9 },
+
+  // ── Restaurantes con tango / música en vivo ──
+  { name: "Café Tortoni", hood: "Monserrat", city: "CABA", types: ["dance", "food"], base: 21 },
+  { name: "Esquina Carlos Gardel", hood: "Abasto", city: "CABA", types: ["dance", "food"], base: 21 },
+  { name: "El Querandí", hood: "Monserrat", city: "CABA", types: ["dance", "food"], base: 21 },
+  { name: "La Ventana Tango", hood: "San Telmo", city: "CABA", types: ["dance", "food"], base: 21 },
+  { name: "Madero Tango", hood: "Puerto Madero", city: "CABA", types: ["dance", "food"], base: 21 },
+  { name: "Las Violetas", hood: "Almagro", city: "CABA", types: ["food", "music"], base: 19 },
+  { name: "36 Billares", hood: "San Nicolás", city: "CABA", types: ["food", "music"], base: 19 },
+  { name: "La Poesía", hood: "San Telmo", city: "CABA", types: ["food", "music"], base: 20 },
+  { name: "Café La Biela", hood: "Recoleta", city: "CABA", types: ["food"], base: 16 },
+  { name: "Gran Café Tortoni", hood: "Monserrat", city: "CABA", types: ["food", "music"], base: 18 },
+
+  // ── Más venues importantes CABA ──
+  { name: "Luna Park", hood: "San Nicolás", city: "CABA", types: ["music", "sport"], base: 21 },
+  { name: "Estadio Único", hood: "La Plata", city: "La Plata", types: ["music", "sport"], base: 21 },
+  { name: "Hipódromo de Palermo", hood: "Palermo", city: "CABA", types: ["sport", "outdoor"], base: 20 },
+  { name: "Hipódromo de San Isidro", hood: "San Isidro", city: "San Isidro", types: ["sport"], base: 15 },
+  { name: "Tecnópolis", hood: "Villa Martelli", city: "Buenos Aires", types: ["art", "music"], base: 17 },
+  { name: "Centro Cultural Kirchner", hood: "San Nicolás", city: "CABA", types: ["music", "art"], base: 19 },
+  { name: "Teatro Coliseo", hood: "Retiro", city: "CABA", types: ["music", "theater"], base: 20 },
+  { name: "ND Ateneo", hood: "Retiro", city: "CABA", types: ["music", "theater"], base: 21 },
+  { name: "Hotel Bauen", hood: "San Nicolás", city: "CABA", types: ["theater", "music"], base: 21 },
+
+  // ── Más Mendoza ──
+  { name: "Bodega Zuccardi", hood: "Maipú", city: "Mendoza", types: ["wine", "food"], base: 12 },
+  { name: "Bodega Norton", hood: "Luján de Cuyo", city: "Mendoza", types: ["wine"], base: 11 },
+  { name: "Bodega Bianchi", hood: "San Rafael", city: "Mendoza", types: ["wine"], base: 11 },
+  { name: "Bodega Ruca Malen", hood: "Luján de Cuyo", city: "Mendoza", types: ["wine", "food"], base: 13 },
+
+  // ── Más Bariloche y Patagonia ──
+  { name: "Cervecería Patagonia", hood: "Llao Llao", city: "Bariloche", types: ["bar", "food"], base: 17 },
+  { name: "Cerro Bayo", hood: "Villa La Angostura", city: "Neuquén", types: ["ski"], base: 9 },
+  { name: "Hosteria Las Balsas", hood: "Villa La Angostura", city: "Neuquén", types: ["food", "wine"], base: 21 },
+  { name: "Las Buttes", hood: "Bariloche", city: "Bariloche", types: ["food", "wine"], base: 21 },
+
+  // ── Más Salta/Norte ──
+  { name: "Tren a las Nubes", hood: "San Antonio de los Cobres", city: "Salta", types: ["adventure", "outdoor"], base: 7 },
+  { name: "Bodega Piattelli", hood: "Cafayate", city: "Cafayate", types: ["wine"], base: 12 },
+  { name: "Bodega El Esteco", hood: "Cafayate", city: "Cafayate", types: ["wine"], base: 12 },
+
+  // ── Más Córdoba ──
+  { name: "La Cumbrecita", hood: "Calamuchita", city: "Villa General Belgrano", types: ["outdoor"], base: 10 },
+  { name: "Centro Cultural Córdoba", hood: "Nueva Córdoba", city: "Córdoba", types: ["music", "art"], base: 20 },
+  { name: "Forja", hood: "Nueva Córdoba", city: "Córdoba", types: ["music"], base: 22 },
+
+  // ── Costa atlántica ──
+  { name: "Cariló Beach Club", hood: "Cariló", city: "Pinamar", types: ["food", "music"], base: 21 },
+  { name: "Espacio Clarín", hood: "Centro", city: "Mar del Plata", types: ["theater"], base: 21 },
 ];
 
 // ─── Title templates per category (Argentine flavor) ─────────────────────────
@@ -399,6 +448,77 @@ function dateForIndex(i: number): { iso: string; hour: number } {
   };
 }
 
+// ─── Ticket platforms (real Argentine ticket sites) ──────────────────────────
+function ticketInfo(venue: Venue, cat: Cat, title: string): { url: string; label: "ticket" | "reserve" } {
+  const name = venue.name.toLowerCase();
+  const q = encodeURIComponent(title);
+
+  // Restaurants → reserve via TheFork or Google Maps
+  if (cat === "food") {
+    return {
+      url: `https://www.thefork.com.ar/buscar?cityId=&search=${encodeURIComponent(venue.name)}`,
+      label: "reserve",
+    };
+  }
+
+  // Big arena venues
+  if (name.includes("movistar arena") || name.includes("luna park") || name.includes("estadio único"))
+    return { url: `https://www.ticketek.com.ar/buscador?Term=${q}`, label: "ticket" };
+
+  // Teatro Colón
+  if (name.includes("teatro colón"))
+    return { url: "https://teatrocolon.org.ar/es/programacion", label: "ticket" };
+
+  // CCK (Centro Cultural Kirchner)
+  if (name.includes("kirchner"))
+    return { url: "https://www.cck.gob.ar/agenda/", label: "ticket" };
+
+  // Self-ticketed venues
+  if (name.includes("vorterix")) return { url: "https://www.vorterix.com/agenda", label: "ticket" };
+  if (name.includes("la trastienda")) return { url: "https://www.latrastienda.com/", label: "ticket" };
+  if (name.includes("niceto")) return { url: "https://www.nicetoclub.com/", label: "ticket" };
+  if (name.includes("konex")) return { url: "https://www.ccknnex.com.ar/agenda", label: "ticket" };
+  if (name.includes("usina del arte")) return { url: "https://www.usinadelarte.org/", label: "ticket" };
+  if (name.includes("malba")) return { url: "https://www.malba.org.ar/agenda/", label: "ticket" };
+  if (name.includes("recoleta")) return { url: "https://www.centroculturalrecoleta.org/", label: "ticket" };
+
+  // Theater → Plateanet (the main theater ticket platform in Argentina)
+  if (cat === "theater") return { url: `https://www.plateanet.com/Search?txt=${q}`, label: "ticket" };
+
+  // Cinema → All Access / Sala Lugones / generic
+  if (cat === "cinema") return { url: `https://www.allaccess.com.ar/?s=${q}`, label: "ticket" };
+
+  // Workshops / wellness / art / wine → Eventbrite
+  if (cat === "wellness" || cat === "art" || cat === "wine") {
+    return {
+      url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`,
+      label: "ticket",
+    };
+  }
+
+  // Tango venues (dance) → own site / Plateanet
+  if (cat === "dance") {
+    if (name.includes("ventana") || name.includes("madero") || name.includes("querandí") || name.includes("gardel") || name.includes("tortoni")) {
+      return { url: `https://www.thefork.com.ar/buscar?search=${encodeURIComponent(venue.name)}`, label: "reserve" };
+    }
+    return { url: `https://www.plateanet.com/Search?txt=${q}`, label: "ticket" };
+  }
+
+  // Adventure / outdoor → Eventbrite or platform-specific
+  if (cat === "adventure" || cat === "outdoor" || cat === "sport" || cat === "ski") {
+    return {
+      url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`,
+      label: "ticket",
+    };
+  }
+
+  // Default music + everything else → Ticketek (biggest AR platform)
+  return {
+    url: `https://www.ticketek.com.ar/buscador?Term=${q}`,
+    label: "ticket",
+  };
+}
+
 function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent {
   const { iso } = dateForIndex(id);
   const baseHour = venue.base ?? (cat === "wellness" ? 8 : cat === "outdoor" ? 10 : cat === "food" ? 21 : 20);
@@ -429,6 +549,7 @@ function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent
   const imgArr = IMG[cat];
   const image = imgArr[id % imgArr.length];
   const spots = 5 + ((id * 17) % 80);
+  const ticket = ticketInfo(venue, cat, title);
 
   return {
     id: `ar${id}`,
@@ -445,6 +566,8 @@ function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent
     endISO: end.toISOString().slice(0, 19),
     spots,
     attendees: attendees(Math.min(spots, 5), id),
+    ticketUrl: ticket.url,
+    ticketLabel: ticket.label,
   };
 }
 
@@ -453,7 +576,7 @@ export function generateArRealEvents(): DemoEvent[] {
   let id = 1;
   // For each venue, generate multiple events from its supported types
   for (const venue of VENUES) {
-    const eventsPerVenue = 4 + (id % 4); // 4-7 events per venue
+    const eventsPerVenue = 8 + (id % 8); // 8-15 events per venue (~1400-1700 events total)
     for (let i = 0; i < eventsPerVenue; i++) {
       const cat = venue.types[i % venue.types.length];
       events.push(makeRealEvent(id, venue, cat, i));
