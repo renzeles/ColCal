@@ -5,6 +5,7 @@ import { Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, MapPin,
 import { useT } from "@/lib/i18n";
 import { DatePicker } from "./DatePicker";
 import { generateWorldEvents } from "@/lib/world-events";
+import { generateArRealEvents } from "@/lib/ar-real-events";
 
 export type DemoEvent = {
   id: string;
@@ -247,9 +248,9 @@ const AR_EVENTS: DemoEvent[] = [
   ev(100,"Cataratas al Atardecer",  "Parque Nacional",        "Iguazú",         "Misiones",  "2026-08-09T16:00:00", 4, 40, "outdoor"),
 ];
 
-// Worldwide events generated at module load (~5000 events across 50 cities)
+// Argentine events: real venues from CABA + interior. Worldwide events for the rest.
 const EVENTS: DemoEvent[] = [
-  ...AR_EVENTS.map((e) => ({ ...e, country: "Argentina" })),
+  ...generateArRealEvents(),
   ...generateWorldEvents(),
 ];
 
