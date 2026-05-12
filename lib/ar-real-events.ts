@@ -571,6 +571,18 @@ function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent
   };
 }
 
+// Deterministic shuffle so events from same venue don't cluster
+function shuffle<T>(arr: T[], seed = 42): T[] {
+  const a = [...arr];
+  let s = seed;
+  const rand = () => { s = (s * 9301 + 49297) % 233280; return s / 233280; };
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function generateArRealEvents(): DemoEvent[] {
   const events: DemoEvent[] = [];
   let id = 1;
@@ -583,5 +595,5 @@ export function generateArRealEvents(): DemoEvent[] {
       id++;
     }
   }
-  return events;
+  return shuffle(events, 7777);
 }
