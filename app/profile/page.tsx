@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Camera, ExternalLink, Upload } from "lucide-react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/use-user";
@@ -18,6 +18,8 @@ export default function ProfilePage() {
   const [description, setDescription] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -74,6 +76,38 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleFileUpload(file: File) {
+    if (!user || uploading) return;
+    // Basic size guard — 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      toast.show("error", "La imagen es muy grande (máx 5 MB).");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      toast.show("error", "Tiene que ser una imagen.");
+      return;
+    }
+    setUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const path = `avatars/${user.id}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("event-images")
+        .upload(path, file, { contentType: file.type, cacheControl: "3600", upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from("event-images").getPublicUrl(path);
+      setAvatarUrl(data.publicUrl);
+      toast.show("success", "Foto cargada. Acordate de guardar.");
+    } catch (err) {
+      console.error(err);
+      toast.show("error", "No se pudo subir la imagen.");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   function useOAuthAvatar() {
     const supabase = createClient();
     supabase.auth.getUser().then(({ data }) => {
@@ -122,23 +156,57 @@ export default function ProfilePage() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-            <Avatar src={avatarUrl || null} name={fullName} size="xl" className="self-center sm:self-auto" />
-            <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-6">
+            {/* Avatar with upload overlay */}
+            <div className="relative self-center sm:self-auto">
+              <Avatar src={avatarUrl || null} name={fullName} size="xl" />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                aria-label="Cambiar foto"
+                className="absolute -bottom-1 -right-1 h-9 w-9 rounded-full bg-stone-900 text-[#faf6ef] flex items-center justify-center shadow-lg hover:bg-[#8b5a3c] transition disabled:opacity-60"
+              >
+                <Camera className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFileUpload(f);
+                }}
+              />
+            </div>
+
+            <div className="flex flex-col gap-2 flex-1 min-w-0">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="inline-flex items-center justify-center sm:justify-start gap-2 px-4 py-2.5 rounded-2xl bg-[#fbf6ee] border border-[#8b5a3c]/20 text-[#8b5a3c] font-bold text-sm hover:bg-white hover:border-[#8b5a3c] transition disabled:opacity-60"
+              >
+                <Upload className="h-4 w-4" strokeWidth={2.5} />
+                {uploading ? "Subiendo..." : "Subir desde la galería"}
+              </button>
+
+              <button
+                type="button"
+                onClick={useOAuthAvatar}
+                className="text-xs text-stone-500 hover:text-[#8b5a3c] self-center sm:self-start transition"
+              >
+                ↻ Usar foto de Google / Microsoft
+              </button>
+
               <input
                 type="url"
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
-                placeholder="URL del avatar"
-                className="px-3 py-1.5 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs w-full"
+                placeholder="…o pegá una URL"
+                className="px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-xs w-full"
               />
-              <button
-                type="button"
-                onClick={useOAuthAvatar}
-                className="text-xs text-blue-600 hover:underline self-start"
-              >
-                Usar foto de mi cuenta de Google/Microsoft
-              </button>
             </div>
           </div>
 
