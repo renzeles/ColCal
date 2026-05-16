@@ -144,6 +144,17 @@ export default function CreatePage() {
         window.history.replaceState({}, "", "/create");
       }
 
+      // Quick-add prefill from natural language parser
+      const qTitle = params.get("title");
+      const qStart = params.get("start");
+      const qEnd = params.get("end");
+      if (qTitle || qStart || qEnd) {
+        if (qTitle) setTitle(qTitle);
+        if (qStart) setStartAt(qStart);
+        if (qEnd) setEndAt(qEnd);
+        window.history.replaceState({}, "", "/create");
+      }
+
       // Auto-open edit form when navigated with ?edit=ID
       const editId = params.get("edit");
       if (editId) {
@@ -718,6 +729,30 @@ export default function CreatePage() {
                 </div>
               </div>
             </div>
+
+            {/* Conflict warning */}
+            {(() => {
+              if (!startAt || !endAt) return null;
+              const s = new Date(startAt).getTime();
+              const e = new Date(endAt).getTime();
+              if (Number.isNaN(s) || Number.isNaN(e)) return null;
+              const overlap = events.find((ev) => {
+                if (editingId && ev.id === editingId) return false;
+                const evS = new Date(ev.start_at).getTime();
+                const evE = new Date(ev.end_at).getTime();
+                return s < evE && e > evS;
+              });
+              if (!overlap) return null;
+              return (
+                <div className="flex items-start gap-2 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm">
+                  <span className="text-base shrink-0">⚠️</span>
+                  <div>
+                    Te superpone con <span className="font-bold">{overlap.title}</span>
+                    <span className="text-amber-700 text-xs"> · {formatDate(overlap.start_at)}</span>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Attendee chip picker */}
             <div ref={suggestionRef} className="relative">

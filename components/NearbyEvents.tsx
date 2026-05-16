@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Calendar, ChevronDown, ChevronLeft, ChevronRight, ExternalLink, MapPin, RotateCcw, Search, Share2, Users, X } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { DatePicker } from "./DatePicker";
+import { WeatherChip } from "./WeatherChip";
 import { generateWorldEvents } from "@/lib/world-events";
 import { generateArRealEvents } from "@/lib/ar-real-events";
 
@@ -363,6 +364,9 @@ function EventDetailModal({
               </a>
             )}
           </div>
+
+          {/* Weather forecast (only if event is within next 15 days) */}
+          <WeatherChip city={ev.city} country={ev.country} iso={ev.startISO} />
 
           {ev.attendees.length > 0 && (
             <div>

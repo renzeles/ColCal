@@ -18,6 +18,7 @@ import { FeedSkeleton } from "@/components/Skeleton";
 import { NearbyEvents } from "@/components/NearbyEvents";
 import { ChannelsSection } from "@/components/ChannelsSection";
 import { ShareEventModal } from "@/components/ShareEventModal";
+import { parseQuickEvent, toLocalIso } from "@/lib/nlp-event";
 import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
 import type { DemoEvent } from "@/components/NearbyEvents";
@@ -435,6 +436,60 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
   );
 }
 
+// ─── Natural-language quick add ──────────────────────────────────────────────
+function QuickAddInput() {
+  const router = useRouter();
+  const [value, setValue] = useState("");
+  const parsed = value.trim() ? parseQuickEvent(value) : null;
+
+  function submit() {
+    if (!parsed || !value.trim()) return;
+    const params = new URLSearchParams();
+    params.set("title", parsed.title);
+    if (parsed.start) params.set("start", toLocalIso(parsed.start));
+    if (parsed.end) params.set("end", toLocalIso(parsed.end));
+    router.push(`/create?${params.toString()}`);
+  }
+
+  return (
+    <div className="bg-white rounded-2xl card-shadow p-3 flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-base">⚡</span>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+          placeholder='Try: "Asado el viernes a las 21"'
+          className="flex-1 bg-transparent border-none focus:outline-none text-sm font-medium placeholder:text-stone-400"
+        />
+        {value.trim() && (
+          <button
+            onClick={submit}
+            className="shrink-0 px-3 h-8 rounded-full bg-stone-900 text-[#faf6ef] text-xs font-bold tracking-tight hover:bg-[#8b5a3c] transition"
+          >
+            Create →
+          </button>
+        )}
+      </div>
+      {parsed && (parsed.start || parsed.ambiguity.length > 0) && (
+        <div className="text-[11px] text-stone-500 pl-7 flex items-center gap-1.5 flex-wrap">
+          <span className="font-semibold text-stone-700">{parsed.title}</span>
+          {parsed.start && (
+            <span className="px-1.5 py-0.5 rounded bg-[#fbf6ee] text-[#8b5a3c] font-bold">
+              {parsed.start.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+              {parsed.ambiguity.includes("hora") ? "" : ` · ${parsed.start.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false })}`}
+            </span>
+          )}
+          {parsed.ambiguity.length > 0 && (
+            <span className="text-amber-700">↳ falta {parsed.ambiguity.join(", ")}</span>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { user, loading: userLoading, signOut } = useUser(false);
@@ -668,6 +723,9 @@ export default function HomePage() {
                 <Plus className="h-4 w-4" strokeWidth={2.5} /> {t("create_event_cta")}
               </Link>
             </div>
+
+            {/* Natural-language quick add */}
+            <QuickAddInput />
 
             {/* Calendar (filtered) */}
             {!loading && <CalendarSection events={visibleEvents} />}
