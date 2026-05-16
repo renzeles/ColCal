@@ -147,6 +147,8 @@ const dict: Dict = {
   notif_accepted: { en: "accepted your request.", es: "aceptó tu solicitud." },
   notif_rejected: { en: "Request rejected.", es: "Solicitud rechazada." },
   notif_invited: { en: "invited you to", es: "te invitó a" },
+  notif_added_you: { en: "added you as a contact.", es: "te añadió como contacto." },
+  notif_shared_event: { en: "shared an event with you:", es: "te compartió un evento:" },
   notif_now_contact: { en: "You're now a contact of", es: "¡Ahora sos contacto de" },
 };
 

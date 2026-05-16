@@ -8,6 +8,7 @@ import { useUser } from "@/lib/use-user";
 import { NavBar } from "@/components/NavBar";
 import { Avatar } from "@/components/Avatar";
 import { Toast, useToast } from "@/components/Toast";
+import { useT } from "@/lib/i18n";
 
 type Notification = {
   id: string;
@@ -30,6 +31,7 @@ function timeAgo(iso: string) {
 export default function NotificationsPage() {
   const { user, loading: userLoading, signOut } = useUser();
   const toast = useToast();
+  const { t } = useT();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -122,11 +124,11 @@ export default function NotificationsPage() {
   }
 
   if (userLoading || !user) {
-    return <div className="min-h-screen flex items-center justify-center"><div className="text-zinc-500 text-sm">Cargando…</div></div>;
+    return <div className="min-h-screen flex items-center justify-center"><div className="text-stone-500 text-sm">{t("page_loading")}</div></div>;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br bakery-bg">
+    <div className="min-h-screen bakery-bg">
       <NavBar
         username={user.profile.username}
         fullName={user.profile.full_name}
@@ -137,17 +139,17 @@ export default function NotificationsPage() {
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="flex items-center gap-3">
           <Bell className="h-5 w-5 text-[#9a3c2b]" />
-          <h1 className="text-3xl font-bold text-stone-900" >
-            Notificaciones
+          <h1 className="text-3xl font-extrabold text-stone-900 tracking-tight">
+            {t("notif_title")}
           </h1>
         </div>
 
         {loading ? (
-          <div className="text-sm text-zinc-500 text-center py-12">Cargando…</div>
+          <div className="text-sm text-stone-500 text-center py-12">{t("page_loading")}</div>
         ) : notifications.length === 0 ? (
-          <div className="text-sm text-zinc-500 text-center py-16 bg-white rounded-2xl border border-zinc-200">
+          <div className="text-sm text-stone-500 text-center py-16 bg-white rounded-2xl card-shadow">
             <Bell className="h-8 w-8 mx-auto mb-3 text-stone-300" />
-            No tenés notificaciones todavía.
+            {t("notif_empty")}
           </div>
         ) : (
           <ul className="space-y-2">
@@ -180,6 +182,7 @@ function NotificationItem({
   onAccept: () => void;
   onReject: () => void;
 }) {
+  const { t: tt } = useT();
   const d = notif.data;
 
   if (notif.type === "contact_request") {
@@ -193,7 +196,7 @@ function NotificationItem({
             <Link href={`/u/${d.from_username}`} className="font-semibold hover:underline">
               {d.from_name || d.from_username}
             </Link>
-            {" "}quiere conectar contigo.
+            {" "}{tt("notif_wants_connect")}
           </p>
           <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
           <div className="flex gap-2 mt-3">
@@ -202,14 +205,14 @@ function NotificationItem({
               disabled={busy}
               className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-[#8b5a3c] text-white hover:bg-[#6b4423] transition disabled:opacity-60"
             >
-              <Check className="h-3 w-3" /> Aceptar
+              <Check className="h-3 w-3" /> {tt("notif_accept")}
             </button>
             <button
               onClick={onReject}
               disabled={busy}
               className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-600 hover:bg-zinc-200 transition disabled:opacity-60"
             >
-              <X className="h-3 w-3" /> Rechazar
+              <X className="h-3 w-3" /> {tt("notif_reject")}
             </button>
           </div>
         </div>
@@ -228,7 +231,7 @@ function NotificationItem({
             <Link href={`/u/${d.from_username}`} className="font-semibold hover:underline">
               {d.from_name || d.from_username}
             </Link>
-            {" "}te añadió como contacto.
+            {" "}{tt("notif_added_you")}
           </p>
           <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
         </div>
@@ -248,7 +251,7 @@ function NotificationItem({
             <Link href={`/u/${d.by_username}`} className="font-semibold hover:underline">
               {d.by_name || d.by_username}
             </Link>
-            {" "}aceptó tu solicitud.
+            {" "}{tt("notif_accepted")}
           </p>
           <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
         </div>
@@ -261,7 +264,7 @@ function NotificationItem({
     return (
       <li className="bg-white rounded-xl border border-zinc-100 p-4 flex items-center gap-3 opacity-60">
         <Avatar src={d.from_avatar || null} name={d.from_name} size="md" />
-        <p className="text-sm text-zinc-500 flex-1">Solicitud rechazada.</p>
+        <p className="text-sm text-stone-500 flex-1">{tt("notif_rejected")}</p>
       </li>
     );
   }
@@ -275,7 +278,7 @@ function NotificationItem({
         <div className="flex-1 min-w-0">
           <p className="text-sm text-stone-900">
             <span className="font-semibold">{d.creator_name || d.creator_username}</span>
-            {" "}te invitó a{" "}
+            {" "}{tt("notif_invited")}{" "}
             <span className="font-semibold">{d.event_title}</span>.
           </p>
           <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>

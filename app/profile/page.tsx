@@ -126,7 +126,7 @@ export default function ProfilePage() {
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-zinc-500 text-sm">Cargando…</div>
+        <div className="text-stone-500 text-sm">Cargando…</div>
       </div>
     );
   }
@@ -141,13 +141,13 @@ export default function ProfilePage() {
       />
 
       <main className="max-w-2xl mx-auto px-4 py-6 space-y-6">
-        <section className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-4 sm:p-6">
+        <section className="bg-white rounded-3xl card-shadow p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6 gap-2">
-            <h1 className="text-lg font-semibold text-zinc-900">Tu perfil</h1>
+            <h1 className="text-2xl font-extrabold text-stone-900 tracking-tight">Tu perfil</h1>
             {user.profile.username && (
               <Link
                 href={`/u/${user.profile.username}`}
-                className="text-xs text-blue-600 hover:underline flex items-center gap-1 shrink-0"
+                className="text-xs text-[#8b5a3c] hover:text-[#6b4423] font-semibold flex items-center gap-1 shrink-0"
               >
                 <span className="hidden sm:inline">Ver perfil público</span>
                 <span className="sm:hidden">Ver perfil</span>
@@ -214,7 +214,7 @@ export default function ProfilePage() {
             <div>
               <label className="block text-xs text-zinc-500 mb-1">Nombre de usuario</label>
               <div className="flex items-center">
-                <span className="px-3 py-2 rounded-l-lg border border-r-0 border-zinc-300 bg-zinc-50 text-sm text-zinc-500">
+                <span className="px-3 py-2 rounded-l-lg border border-r-0 border-stone-200 bg-stone-100 text-sm text-stone-500">
                   @
                 </span>
                 <input
@@ -224,10 +224,10 @@ export default function ProfilePage() {
                   placeholder="usuario"
                   required
                   pattern="[a-zA-Z0-9_]{3,}"
-                  className="flex-1 px-3 py-2 rounded-r-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  className="flex-1 px-3 py-2 rounded-r-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
                 />
               </div>
-              <p className="text-[11px] text-zinc-400 mt-1">
+              <p className="text-[11px] text-stone-400 mt-1">
                 Solo letras, números y _. Mínimo 3 caracteres.
               </p>
             </div>
@@ -239,7 +239,7 @@ export default function ProfilePage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="Tu nombre"
-                className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm"
               />
             </div>
 
@@ -251,15 +251,15 @@ export default function ProfilePage() {
                 placeholder="Contá algo de vos…"
                 rows={3}
                 maxLength={280}
-                className="w-full px-3 py-2 rounded-lg border border-zinc-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] focus:ring-4 focus:ring-[#8b5a3c]/10 transition text-sm resize-none"
               />
-              <p className="text-[11px] text-zinc-400 mt-1 text-right">{description.length}/280</p>
+              <p className="text-[11px] text-stone-400 mt-1 text-right">{description.length}/280</p>
             </div>
 
             <button
               type="submit"
               disabled={saving}
-              className="w-full h-11 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition disabled:opacity-60"
+              className="w-full h-11 rounded-lg bg-stone-900 text-[#faf6ef] font-extrabold text-sm tracking-tight hover:bg-[#8b5a3c] transition disabled:opacity-60"
             >
               {saving ? "Guardando…" : "Guardar cambios"}
             </button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Search, Send, X } from "lucide-react";
+import { Check, Copy, MessageCircle, Search, Send, X } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/lib/i18n";
 import { Avatar } from "./Avatar";
@@ -96,15 +96,23 @@ export function ShareEventModal({ event, userId, userProfile, onClose, onSuccess
     }
   }
 
-  async function handleCopyLink() {
-    const url = event.creator.username
+  function eventUrl() {
+    return event.creator.username
       ? `${window.location.origin}/u/${event.creator.username}/e/${event.id}`
       : `${window.location.origin}/event/${event.id}`;
+  }
+
+  async function handleCopyLink() {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(eventUrl());
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 1500);
     } catch { /* */ }
+  }
+
+  function handleWhatsApp() {
+    const text = `${event.title} — ${eventUrl()}`;
+    window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
   }
 
   const filtered = contacts.filter((c) => {
@@ -212,13 +220,22 @@ export function ShareEventModal({ event, userId, userProfile, onClose, onSuccess
               ? t("share_send_one")
               : t("share_send", { n: selected.size || "—" })}
           </button>
-          <button
-            onClick={handleCopyLink}
-            className="w-full h-10 rounded-2xl bg-transparent text-stone-600 hover:text-[#8b5a3c] font-semibold text-xs uppercase tracking-wider flex items-center justify-center gap-2"
-          >
-            {linkCopied ? <Check className="h-4 w-4" strokeWidth={2.5} /> : <Copy className="h-4 w-4" strokeWidth={2.5} />}
-            {linkCopied ? "Copied" : t("share_copy_link")}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleWhatsApp}
+              className="flex-1 h-10 rounded-2xl bg-[#25d366] text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#1ebe57] transition"
+            >
+              <MessageCircle className="h-4 w-4" strokeWidth={2.5} />
+              WhatsApp
+            </button>
+            <button
+              onClick={handleCopyLink}
+              className="flex-1 h-10 rounded-2xl bg-white border border-stone-200 text-stone-700 hover:border-[#8b5a3c] hover:text-[#8b5a3c] font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition"
+            >
+              {linkCopied ? <Check className="h-4 w-4" strokeWidth={2.5} /> : <Copy className="h-4 w-4" strokeWidth={2.5} />}
+              {linkCopied ? "Copied" : "Link"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

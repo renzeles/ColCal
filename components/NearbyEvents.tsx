@@ -834,6 +834,30 @@ function ClearButton({ active, onClick, label }: { active: boolean; onClick: () 
   );
 }
 
+// Time-until chip: "NOW", "TODAY", "TOMORROW", "in 3 d", "in 2 w", "in 1 mo"
+function timeUntil(iso: string): { label: string; tone: "now" | "soon" | "later" } | null {
+  const start = new Date(iso).getTime();
+  const now = Date.now();
+  const diffMs = start - now;
+  if (diffMs < 0 && Math.abs(diffMs) < 6 * 3_600_000) return { label: "NOW", tone: "now" };
+  if (diffMs < 0) return null;
+  const diffH = diffMs / 3_600_000;
+  if (diffH < 24) {
+    // Today
+    const startDate = new Date(start);
+    const today = new Date();
+    if (startDate.getDate() === today.getDate() && startDate.getMonth() === today.getMonth()) {
+      return { label: "TODAY", tone: "now" };
+    }
+  }
+  const diffDays = Math.floor(diffMs / 86_400_000);
+  if (diffDays === 0) return { label: "TODAY", tone: "now" };
+  if (diffDays === 1) return { label: "TOMORROW", tone: "soon" };
+  if (diffDays < 7) return { label: `IN ${diffDays}D`, tone: "soon" };
+  if (diffDays < 30) return { label: `IN ${Math.round(diffDays / 7)}W`, tone: "later" };
+  return { label: `IN ${Math.round(diffDays / 30)}MO`, tone: "later" };
+}
+
 function EventCard({
   ev, copied, onShare, onOpen, onAdd,
 }: {
@@ -843,11 +867,25 @@ function EventCard({
   onOpen: () => void;
   onAdd?: (ev: DemoEvent) => void;
 }) {
+  const until = timeUntil(ev.startISO);
   return (
     <div className="rounded-2xl overflow-hidden bg-white card-shadow card-shadow-hover flex flex-col h-full">
       <button className="text-left w-full cursor-pointer relative" onClick={onOpen}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={ev.image} alt={ev.title} className="w-full h-36 sm:h-40 object-cover" loading="lazy" />
+        {until && (
+          <span
+            className={`absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider shadow-sm ${
+              until.tone === "now"
+                ? "bg-[#9a3c2b] text-white animate-pulse"
+                : until.tone === "soon"
+                ? "bg-[#8b5a3c] text-white"
+                : "bg-[#faf6ef]/95 text-stone-700"
+            }`}
+          >
+            {until.label}
+          </span>
+        )}
         {ev.ticketUrl && (
           <span className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf6ef]/95 text-[#8b5a3c] shadow-sm">
             {ev.ticketLabel === "reserve" ? "🍽️" : "🎫"}
