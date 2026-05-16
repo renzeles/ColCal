@@ -134,18 +134,19 @@ export default function ContactsPage() {
     setBusyId(target.id);
     const supabase = createClient();
     try {
-      // Insert contact request
-      const { error: reqErr } = await supabase.from("contact_requests").insert({
-        from_id: user.id,
-        to_id: target.id,
-        status: "pending",
-      });
-      if (reqErr) throw reqErr;
+      // Auto-mutual follow (no request needed)
+      await supabase.from("follows").upsert(
+        [
+          { follower_id: user.id, following_id: target.id },
+          { follower_id: target.id, following_id: user.id },
+        ],
+        { onConflict: "follower_id,following_id", ignoreDuplicates: true }
+      );
 
-      // Create notification for the target
+      // FYI notification (not actionable)
       await supabase.from("notifications").insert({
         user_id: target.id,
-        type: "contact_request",
+        type: "contact_added",
         data: {
           from_id: user.id,
           from_name: user.profile.full_name ?? user.profile.username ?? "Alguien",
@@ -154,11 +155,12 @@ export default function ContactsPage() {
         },
       });
 
-      setPendingIds((prev) => new Set(prev).add(target.id));
+      setFollowingIds((prev) => new Set(prev).add(target.id));
+      setMutuals((prev) => prev.find((p) => p.id === target.id) ? prev : [target, ...prev]);
       setSuggestions((prev) => prev.filter((p) => p.id !== target.id));
-      toast.show("success", `Solicitud enviada a ${target.full_name ?? target.username}.`);
+      toast.show("success", `Añadiste a ${target.full_name ?? target.username}.`);
     } catch {
-      toast.show("error", "No se pudo enviar la solicitud.");
+      toast.show("error", "No se pudo añadir el contacto.");
     } finally {
       setBusyId(null);
     }

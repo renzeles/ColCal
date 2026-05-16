@@ -210,7 +210,6 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
   const toast = useToast();
   const [mutuals, setMutuals] = useState<Profile[]>([]);
   const [mutualIdSet, setMutualIdSet] = useState<Set<string>>(new Set());
-  const [pendingIds, setPendingIds] = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions] = useState<Profile[]>([]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -243,26 +242,23 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
   useEffect(() => {
     const supabase = createClient();
     (async () => {
-      const [{ data: followingRows }, { data: followerRows }, { data: requestRows }] = await Promise.all([
+      const [{ data: followingRows }, { data: followerRows }] = await Promise.all([
         supabase.from("follows").select("following_id").eq("follower_id", userId),
         supabase.from("follows").select("follower_id").eq("following_id", userId),
-        supabase.from("contact_requests").select("to_id").eq("from_id", userId).eq("status", "pending"),
       ]);
 
       const followingIds = (followingRows ?? []).map((r) => r.following_id);
       const followerIds = new Set((followerRows ?? []).map((r) => r.follower_id));
       const mutualIds = followingIds.filter((id) => followerIds.has(id));
-      const pending = new Set((requestRows ?? []).map((r) => r.to_id));
 
       const profiles = mutualIds.length === 0
         ? []
         : (await supabase.from("profiles").select("*").in("id", mutualIds)).data ?? [];
       setMutuals((profiles as Profile[]) ?? []);
       setMutualIdSet(new Set(mutualIds));
-      setPendingIds(pending);
 
       // Load suggestions
-      const exclude = new Set([userId, ...followingIds, ...pending]);
+      const exclude = new Set([userId, ...followingIds]);
       const { data: suggestData } = await supabase
         .from("profiles").select("*").neq("id", userId).not("username", "is", null).limit(20);
       const filtered = ((suggestData as Profile[]) ?? []).filter((p) => !exclude.has(p.id)).slice(0, 12);
@@ -290,17 +286,24 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
     }, 300);
   }, [query, userId]);
 
-  async function sendRequest(target: Profile) {
+  async function addContact(target: Profile) {
     if (busyId) return;
     setBusyId(target.id);
     const supabase = createClient();
     try {
-      const { error } = await supabase.from("contact_requests").insert({
-        from_id: userId, to_id: target.id, status: "pending",
-      });
-      if (error) throw error;
+      // Mutual follow — immediate, no request needed
+      await supabase.from("follows").upsert(
+        [
+          { follower_id: userId, following_id: target.id },
+          { follower_id: target.id, following_id: userId },
+        ],
+        { onConflict: "follower_id,following_id", ignoreDuplicates: true }
+      );
+
+      // Notify the other person (FYI, not actionable)
       await supabase.from("notifications").insert({
-        user_id: target.id, type: "contact_request",
+        user_id: target.id,
+        type: "contact_added",
         data: {
           from_id: userId,
           from_name: userProfile.full_name ?? userProfile.username ?? "Someone",
@@ -308,11 +311,13 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
           from_avatar: userProfile.avatar_url,
         },
       });
-      setPendingIds((prev) => new Set(prev).add(target.id));
+
+      setMutualIdSet((prev) => new Set(prev).add(target.id));
+      setMutuals((prev) => prev.find((p) => p.id === target.id) ? prev : [target, ...prev]);
       setSuggestions((prev) => prev.filter((p) => p.id !== target.id));
-      toast.show("success", `Request sent to ${target.full_name ?? target.username}.`);
+      toast.show("success", `Added ${target.full_name ?? target.username} as a contact.`);
     } catch {
-      toast.show("error", "Couldn't send request.");
+      toast.show("error", "Couldn't add contact.");
     } finally {
       setBusyId(null);
     }
@@ -324,7 +329,6 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
 
   function renderUserRow(p: Profile) {
     const isMutual = mutualIdSet.has(p.id);
-    const isPending = pendingIds.has(p.id);
     return (
       <li key={p.id} className="bg-white rounded-xl card-shadow p-3 flex items-center gap-3">
         <Link href={`/u/${p.username}`}>
@@ -338,13 +342,9 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
           <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100 cursor-default">
             <UserCheck className="h-3.5 w-3.5" /> {t("contacts_contact")}
           </span>
-        ) : isPending ? (
-          <span className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-100 text-stone-500 cursor-default">
-            {t("contacts_pending")}
-          </span>
         ) : (
           <button
-            onClick={() => sendRequest(p)}
+            onClick={() => addContact(p)}
             disabled={busyId === p.id}
             className="flex items-center gap-1 px-3 h-8 rounded-full text-xs font-semibold bg-stone-900 text-[#faf6ef] hover:bg-[#8b5a3c] transition disabled:opacity-60"
           >
@@ -409,19 +409,13 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
                     {p.full_name ?? p.username}
                   </Link>
                   <p className="text-[10px] text-stone-500 truncate w-full">@{p.username}</p>
-                  {pendingIds.has(p.id) ? (
-                    <span className="mt-2 w-full text-center text-[10px] font-semibold text-stone-500 px-2 py-1.5 rounded-full bg-stone-100">
-                      {t("contacts_pending")}
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => sendRequest(p)}
-                      disabled={busyId === p.id}
-                      className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-[#8b5a3c] px-2 py-1.5 rounded-full transition disabled:opacity-60"
-                    >
-                      + {t("contacts_add")}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => addContact(p)}
+                    disabled={busyId === p.id}
+                    className="mt-2 w-full text-[11px] font-semibold text-[#faf6ef] bg-stone-900 hover:bg-[#8b5a3c] px-2 py-1.5 rounded-full transition disabled:opacity-60"
+                  >
+                    + {t("contacts_add")}
+                  </button>
                 </div>
               ))}
             </div>

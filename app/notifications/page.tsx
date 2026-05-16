@@ -217,6 +217,26 @@ function NotificationItem({
     );
   }
 
+  if (notif.type === "contact_added") {
+    return (
+      <li className="bg-white rounded-2xl card-shadow p-4 flex items-center gap-3">
+        <Link href={`/u/${d.from_username}`}>
+          <Avatar src={d.from_avatar || null} name={d.from_name} size="md" />
+        </Link>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-stone-900">
+            <Link href={`/u/${d.from_username}`} className="font-semibold hover:underline">
+              {d.from_name || d.from_username}
+            </Link>
+            {" "}te añadió como contacto.
+          </p>
+          <p className="text-xs text-stone-400 mt-0.5">{timeAgo(notif.created_at)}</p>
+        </div>
+        <UserCheck className="h-5 w-5 text-emerald-500 shrink-0" />
+      </li>
+    );
+  }
+
   if (notif.type === "contact_accepted" || notif.type === "contact_accepted_done") {
     return (
       <li className="bg-white rounded-2xl card-shadow p-4 flex items-center gap-3">

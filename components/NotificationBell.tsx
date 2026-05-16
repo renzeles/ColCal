@@ -173,6 +173,9 @@ function NotifRow({ notif, onClick }: { notif: Notification; onClick: () => void
   if (notif.type === "contact_request") {
     icon = <Avatar src={d.from_avatar || null} name={d.from_name} size="sm" />;
     body = <><span className="font-bold">{d.from_name || d.from_username}</span> wants to connect.</>;
+  } else if (notif.type === "contact_added") {
+    icon = <Avatar src={d.from_avatar || null} name={d.from_name} size="sm" />;
+    body = <><span className="font-bold">{d.from_name || d.from_username}</span> added you as a contact.</>;
   } else if (notif.type === "contact_accepted" || notif.type === "contact_accepted_done") {
     icon = (
       <div className="relative">

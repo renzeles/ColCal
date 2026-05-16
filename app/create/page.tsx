@@ -474,6 +474,46 @@ export default function CreatePage() {
         if (error) throw error;
         setEvents((prev) => [inserted as SentEvent, ...prev]);
         toast.show("success", visibility === "public" ? "Evento publicado" : "Evento enviado");
+
+        // Auto-friend + notify invitees who are Agenddi users
+        if (attendeeEmails.length > 0 && inserted) {
+          try {
+            const { data: matched } = await supabase
+              .from("profiles")
+              .select("id, email, username, full_name")
+              .in("email", attendeeEmails);
+            const matchedProfiles = (matched as Array<{ id: string; email: string; username: string | null; full_name: string | null }> | null) ?? [];
+            if (matchedProfiles.length > 0) {
+              // Auto-mutual follow with each matched invitee (skip if already follows)
+              const followRows = matchedProfiles.flatMap((p) => [
+                { follower_id: user.id, following_id: p.id },
+                { follower_id: p.id, following_id: user.id },
+              ]);
+              await supabase.from("follows").upsert(followRows, {
+                onConflict: "follower_id,following_id",
+                ignoreDuplicates: true,
+              });
+
+              // Event invite notification for each
+              const notifs = matchedProfiles.map((p) => ({
+                user_id: p.id,
+                type: "event_invite",
+                data: {
+                  event_id: (inserted as SentEvent).id,
+                  event_title: title,
+                  event_url: user.profile.username ? `/u/${user.profile.username}/e/${(inserted as SentEvent).id}` : "",
+                  creator_id: user.id,
+                  creator_name: user.profile.full_name ?? user.profile.username ?? "Someone",
+                  creator_username: user.profile.username,
+                  creator_avatar: user.profile.avatar_url,
+                },
+              }));
+              await supabase.from("notifications").insert(notifs);
+            }
+          } catch (notifyErr) {
+            console.warn("Auto-friend/notify on invite failed:", notifyErr);
+          }
+        }
       }
 
       resetForm();

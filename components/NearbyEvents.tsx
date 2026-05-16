@@ -501,7 +501,11 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
     });
   }, [query, pickedDate, selectedCity]);
 
+  // Cap render to avoid jamming the DOM with thousands of cards
+  const MAX_VISIBLE = 120;
+  const visibleEvents = filteredEvents.slice(0, MAX_VISIBLE);
   const n = filteredEvents.length;
+  const visibleN = visibleEvents.length;
   const total = EVENTS.length;
   const isFiltering = query.trim().length > 0 || pickedDate.length > 0 || selectedCity !== "all";
 
@@ -623,7 +627,11 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
             searchPlaceholder={t("ne_city_search")}
           />
           <p className="text-sm text-stone-500 font-medium truncate">
-            {isFiltering ? t("ne_showing", { n, total }) : t("ne_count", { n })}
+            {n > MAX_VISIBLE
+              ? t("ne_showing", { n: visibleN, total: n })
+              : isFiltering
+              ? t("ne_showing", { n, total })
+              : t("ne_count", { n })}
           </p>
         </div>
 
@@ -678,7 +686,7 @@ export function NearbyEvents({ onAdd }: { onAdd?: (ev: DemoEvent) => void }) {
               className="flex gap-3 overflow-x-auto snap-x snap-mandatory scrollbar-hide pb-1 cursor-grab active:cursor-grabbing select-none"
               style={{ touchAction: "pan-y" }}
             >
-              {filteredEvents.map((e) => (
+              {visibleEvents.map((e) => (
                 <div
                   key={e.id}
                   className="snap-start shrink-0 w-[78%] sm:w-[45%] md:w-[31%]"
