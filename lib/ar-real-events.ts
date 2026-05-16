@@ -1,6 +1,6 @@
 import type { DemoEvent } from "@/components/NearbyEvents";
 
-// ─── Image pool (same as world-events) ──────────────────────────────────────
+// ─── Image pool ─────────────────────────────────────────────────────────────
 const IMG = {
   food: [
     "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?auto=format&fit=crop&w=800&h=500",
@@ -27,7 +27,6 @@ const IMG = {
   outdoor: [
     "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=800&h=500",
     "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=800&h=500",
-    "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&h=500",
   ],
   wellness: [
     "https://images.unsplash.com/photo-1545205597-3d9d02c29597?auto=format&fit=crop&w=800&h=500",
@@ -53,7 +52,6 @@ const IMG = {
     "https://images.unsplash.com/photo-1485846234645-a62644f84728?auto=format&fit=crop&w=800&h=500",
   ],
   theater: [
-    "https://images.unsplash.com/photo-1503095396549-807759245b35?auto=format&fit=crop&w=800&h=500",
     "https://images.unsplash.com/photo-1507924538820-ede94a04019d?auto=format&fit=crop&w=800&h=500",
   ],
   ski: [
@@ -66,362 +64,163 @@ const IMG = {
 
 type Cat = keyof typeof IMG;
 
-// ─── Real Argentine venues with their typical event types ────────────────────
-type Venue = {
-  name: string;
-  hood: string;
-  city: string;
-  types: Cat[];
-  base?: number; // base hour (default varies by type)
-};
+// ─── Argentina cities + neighborhoods (weighted distribution) ───────────────
+const CITIES: { name: string; weight: number; hoods: string[] }[] = [
+  {
+    name: "CABA", weight: 60,
+    hoods: [
+      "Palermo", "Palermo Soho", "Palermo Hollywood", "Recoleta", "San Telmo",
+      "Belgrano", "Caballito", "Villa Crespo", "Almagro", "Chacarita",
+      "Saavedra", "Núñez", "Colegiales", "Boedo", "Floresta", "Flores",
+      "Constitución", "Barracas", "La Boca", "Puerto Madero", "Retiro",
+      "San Nicolás", "Once", "Balvanera", "Monserrat", "Parque Patricios",
+      "Villa Devoto", "Villa del Parque", "Mataderos", "Villa Urquiza",
+      "Abasto", "Coghlan", "Microcentro",
+    ],
+  },
+  { name: "La Plata", weight: 6, hoods: ["Centro", "Norte", "Tolosa", "City Bell", "Gonnet"] },
+  { name: "Tigre", weight: 3, hoods: ["Tigre Centro", "Nordelta", "Don Torcuato", "Rincón de Milberg"] },
+  { name: "San Isidro", weight: 3, hoods: ["Centro", "Acassuso", "Beccar", "Martínez"] },
+  { name: "Vicente López", weight: 3, hoods: ["Olivos", "Florida", "La Lucila", "Munro"] },
+  { name: "Mar del Plata", weight: 5, hoods: ["Centro", "Playa Grande", "Los Troncos", "Punta Mogotes", "Constitución"] },
+  { name: "Mendoza", weight: 5, hoods: ["Centro", "Chacras de Coria", "Godoy Cruz", "Luján de Cuyo", "Maipú"] },
+  { name: "Córdoba", weight: 5, hoods: ["Nueva Córdoba", "Güemes", "Cerro de las Rosas", "Centro", "General Paz"] },
+  { name: "Rosario", weight: 4, hoods: ["Centro", "Pichincha", "Fisherton", "Echesortu", "Macrocentro"] },
+  { name: "Bariloche", weight: 2, hoods: ["Centro", "Llao Llao", "Cerro Catedral", "Playa Bonita"] },
+  { name: "Salta", weight: 2, hoods: ["Centro", "San Lorenzo", "Cafayate"] },
+  { name: "Tucumán", weight: 1, hoods: ["Centro", "Yerba Buena", "Tafí del Valle"] },
+  { name: "Pinamar", weight: 1, hoods: ["Centro", "Cariló", "Ostende"] },
+];
+const TOTAL_WEIGHT = CITIES.reduce((s, c) => s + c.weight, 0);
 
-const VENUES: Venue[] = [
-  // ── CABA — Música ──
-  { name: "Niceto Club", hood: "Palermo Hollywood", city: "CABA", types: ["music"], base: 23 },
-  { name: "Café Vinilo", hood: "Palermo", city: "CABA", types: ["music"], base: 22 },
-  { name: "La Trastienda", hood: "San Telmo", city: "CABA", types: ["music"], base: 22 },
-  { name: "Centro Cultural Konex", hood: "Abasto", city: "CABA", types: ["music", "theater"], base: 21 },
-  { name: "Vorterix", hood: "Colegiales", city: "CABA", types: ["music"], base: 22 },
-  { name: "Café Berlín", hood: "Belgrano", city: "CABA", types: ["music"], base: 22 },
-  { name: "El Emergente", hood: "Boedo", city: "CABA", types: ["music"], base: 22 },
-  { name: "CAFF", hood: "Boedo", city: "CABA", types: ["music"], base: 21 },
-  { name: "Strummer Bar", hood: "Palermo", city: "CABA", types: ["music", "bar"], base: 22 },
-  { name: "Mod Club", hood: "Palermo Hollywood", city: "CABA", types: ["music"], base: 23 },
-  { name: "Lucille", hood: "Palermo", city: "CABA", types: ["music", "bar"], base: 21 },
-  { name: "Bebop Club", hood: "Palermo", city: "CABA", types: ["music"], base: 21 },
-  { name: "Thelonious Bar", hood: "Palermo", city: "CABA", types: ["music"], base: 22 },
-  { name: "Movistar Arena", hood: "Villa Crespo", city: "CABA", types: ["music"], base: 21 },
-  { name: "Teatro Vorterix Rosario", hood: "Centro", city: "Rosario", types: ["music"], base: 22 },
+function pickCity(seed: number) {
+  let r = ((seed * 9301 + 49297) >>> 0) % TOTAL_WEIGHT;
+  for (const c of CITIES) {
+    if (r < c.weight) return c;
+    r -= c.weight;
+  }
+  return CITIES[0];
+}
 
-  // ── CABA — Tango / Milongas ──
-  { name: "La Catedral del Tango", hood: "Almagro", city: "CABA", types: ["dance", "music"], base: 22 },
-  { name: "Salón Canning", hood: "Palermo", city: "CABA", types: ["dance"], base: 22 },
-  { name: "El Beso", hood: "Balvanera", city: "CABA", types: ["dance"], base: 21 },
-  { name: "La Viruta Tango Club", hood: "Palermo Soho", city: "CABA", types: ["dance"], base: 22 },
-  { name: "Café de los Angelitos", hood: "Balvanera", city: "CABA", types: ["dance", "music"], base: 21 },
-  { name: "Bar Sur", hood: "San Telmo", city: "CABA", types: ["dance"], base: 21 },
-  { name: "Sunderland Club", hood: "Villa Urquiza", city: "CABA", types: ["dance"], base: 22 },
-  { name: "Confitería Ideal", hood: "Microcentro", city: "CABA", types: ["dance"], base: 22 },
-
-  // ── CABA — Teatro ──
-  { name: "Paseo La Plaza", hood: "San Nicolás", city: "CABA", types: ["theater", "comedy"], base: 20 },
-  { name: "Teatro San Martín", hood: "San Nicolás", city: "CABA", types: ["theater"], base: 20 },
-  { name: "Teatro Cervantes", hood: "San Nicolás", city: "CABA", types: ["theater"], base: 20 },
-  { name: "El Cubo", hood: "Abasto", city: "CABA", types: ["theater"], base: 21 },
-  { name: "Espacio Callejón", hood: "Almagro", city: "CABA", types: ["theater"], base: 21 },
-  { name: "Multiteatro Comafi", hood: "San Nicolás", city: "CABA", types: ["theater"], base: 20 },
-  { name: "Teatro Picadero", hood: "San Nicolás", city: "CABA", types: ["theater"], base: 20 },
-  { name: "Teatro Maipo", hood: "San Nicolás", city: "CABA", types: ["theater"], base: 21 },
-  { name: "Teatro Liceo", hood: "San Nicolás", city: "CABA", types: ["theater"], base: 21 },
-  { name: "Teatro Colón", hood: "San Nicolás", city: "CABA", types: ["music", "theater"], base: 20 },
-  { name: "Astor Piazzolla", hood: "Microcentro", city: "CABA", types: ["theater", "music"], base: 21 },
-  { name: "Centro Cultural Caras y Caretas", hood: "Balvanera", city: "CABA", types: ["theater", "music"], base: 20 },
-
-  // ── CABA — Comedia ──
-  { name: "El Cotorro", hood: "San Telmo", city: "CABA", types: ["comedy"], base: 21 },
-  { name: "La Tangente", hood: "Villa Crespo", city: "CABA", types: ["comedy", "music"], base: 21 },
-  { name: "Cantares", hood: "Palermo", city: "CABA", types: ["comedy"], base: 21 },
-
-  // ── CABA — Cine ──
-  { name: "Sala Lugones", hood: "San Nicolás", city: "CABA", types: ["cinema"], base: 19 },
-  { name: "Cine Lorca", hood: "San Nicolás", city: "CABA", types: ["cinema"], base: 20 },
-  { name: "Cosmos UBA", hood: "Recoleta", city: "CABA", types: ["cinema"], base: 19 },
-  { name: "Cineclub Núcleo", hood: "Microcentro", city: "CABA", types: ["cinema"], base: 19 },
-  { name: "Espacio INCAA Gaumont", hood: "San Nicolás", city: "CABA", types: ["cinema"], base: 19 },
-
-  // ── CABA — Food / Parrillas / Restaurants ──
-  { name: "Don Julio", hood: "Palermo", city: "CABA", types: ["food", "wine"], base: 21 },
-  { name: "La Cabrera", hood: "Palermo", city: "CABA", types: ["food"], base: 21 },
-  { name: "El Preferido", hood: "San Telmo", city: "CABA", types: ["food", "wine"], base: 20 },
-  { name: "Mishiguene", hood: "Palermo", city: "CABA", types: ["food", "wine"], base: 21 },
-  { name: "Anchoita", hood: "Chacarita", city: "CABA", types: ["food", "wine"], base: 21 },
-  { name: "Tegui", hood: "Palermo", city: "CABA", types: ["food", "wine"], base: 21 },
-  { name: "Trescha", hood: "Palermo", city: "CABA", types: ["food", "wine"], base: 21 },
-  { name: "Las Pizarras", hood: "Palermo", city: "CABA", types: ["food"], base: 21 },
-  { name: "Sucre", hood: "Belgrano", city: "CABA", types: ["food", "wine"], base: 21 },
-  { name: "Cabaña Las Lilas", hood: "Puerto Madero", city: "CABA", types: ["food"], base: 21 },
-  { name: "La Brigada", hood: "San Telmo", city: "CABA", types: ["food"], base: 21 },
-  { name: "Parrilla Peña", hood: "Almagro", city: "CABA", types: ["food"], base: 21 },
-  { name: "Aramburu", hood: "Recoleta", city: "CABA", types: ["food", "wine"], base: 20 },
-  { name: "Crizia", hood: "Palermo", city: "CABA", types: ["food"], base: 21 },
-
-  // ── CABA — Cocktail Bars ──
-  { name: "Florería Atlántico", hood: "Retiro", city: "CABA", types: ["bar"], base: 20 },
-  { name: "Frank's Bar", hood: "Palermo Hollywood", city: "CABA", types: ["bar"], base: 21 },
-  { name: "Verne Club", hood: "Palermo", city: "CABA", types: ["bar"], base: 21 },
-  { name: "878", hood: "Villa Crespo", city: "CABA", types: ["bar"], base: 21 },
-  { name: "Tres Monos", hood: "Palermo", city: "CABA", types: ["bar"], base: 20 },
-  { name: "Bar 6", hood: "Palermo Soho", city: "CABA", types: ["bar"], base: 20 },
-  { name: "Doppelgänger", hood: "San Telmo", city: "CABA", types: ["bar"], base: 21 },
-  { name: "Presidente Bar", hood: "Recoleta", city: "CABA", types: ["bar"], base: 20 },
-
-  // ── CABA — Vinos ──
-  { name: "Aldo's Restaurante", hood: "Recoleta", city: "CABA", types: ["wine", "food"], base: 20 },
-  { name: "Pain et Vin", hood: "Palermo", city: "CABA", types: ["wine"], base: 19 },
-  { name: "Lo de Joaquín Alberdi", hood: "Palermo", city: "CABA", types: ["wine"], base: 19 },
-  { name: "Casa Vinya", hood: "Palermo", city: "CABA", types: ["wine"], base: 19 },
-  { name: "Vico Wine Bar", hood: "Palermo", city: "CABA", types: ["wine"], base: 19 },
-
-  // ── CABA — Cervecerías artesanales ──
-  { name: "Buller Brewing", hood: "Recoleta", city: "CABA", types: ["bar"], base: 20 },
-  { name: "Antares", hood: "Palermo", city: "CABA", types: ["bar"], base: 20 },
-  { name: "Strange Brewing", hood: "Villa Crespo", city: "CABA", types: ["bar"], base: 20 },
-  { name: "Bröeders", hood: "Belgrano", city: "CABA", types: ["bar"], base: 20 },
-  { name: "On Tap", hood: "Palermo", city: "CABA", types: ["bar"], base: 19 },
-
-  // ── CABA — Talleres / Cerámica ──
-  { name: "Estudio Tierra", hood: "Villa Urquiza", city: "CABA", types: ["art"], base: 18 },
-  { name: "Taller La Sombrerería", hood: "Chacarita", city: "CABA", types: ["art"], base: 19 },
-  { name: "Vasija Studio", hood: "Villa Crespo", city: "CABA", types: ["art"], base: 18 },
-  { name: "Anti Cerámica", hood: "Almagro", city: "CABA", types: ["art"], base: 18 },
-
-  // ── CABA — Centros culturales ──
-  { name: "Centro Cultural Recoleta", hood: "Recoleta", city: "CABA", types: ["art", "music"], base: 19 },
-  { name: "Centro Cultural Borges", hood: "Retiro", city: "CABA", types: ["art"], base: 18 },
-  { name: "Centro Cultural San Martín", hood: "San Nicolás", city: "CABA", types: ["art", "theater"], base: 19 },
-  { name: "Usina del Arte", hood: "La Boca", city: "CABA", types: ["music", "art"], base: 20 },
-  { name: "MALBA", hood: "Palermo", city: "CABA", types: ["art", "cinema"], base: 19 },
-  { name: "Museo MAMBA", hood: "San Telmo", city: "CABA", types: ["art"], base: 18 },
-
-  // ── CABA — Mercados / Ferias ──
-  { name: "Feria de Mataderos", hood: "Mataderos", city: "CABA", types: ["food", "art"], base: 12 },
-  { name: "Mercado de San Telmo", hood: "San Telmo", city: "CABA", types: ["food"], base: 12 },
-  { name: "Mercado de Bonpland", hood: "Palermo Hollywood", city: "CABA", types: ["food"], base: 11 },
-  { name: "Feria de Plaza Francia", hood: "Recoleta", city: "CABA", types: ["art"], base: 11 },
-  { name: "Mercado de Pulgas", hood: "Colegiales", city: "CABA", types: ["art"], base: 11 },
-
-  // ── CABA — Outdoor / Sports ──
-  { name: "Bosques de Palermo", hood: "Palermo", city: "CABA", types: ["outdoor", "sport"], base: 9 },
-  { name: "Reserva Ecológica Costanera Sur", hood: "Puerto Madero", city: "CABA", types: ["outdoor", "sport"], base: 8 },
-  { name: "Parque Centenario", hood: "Caballito", city: "CABA", types: ["outdoor"], base: 10 },
-  { name: "Costanera Norte", hood: "Núñez", city: "CABA", types: ["sport", "outdoor"], base: 9 },
-  { name: "Planetario Galileo Galilei", hood: "Palermo", city: "CABA", types: ["art"], base: 20 },
-
-  // ── CABA — Wellness ──
-  { name: "Inspira Loft", hood: "Palermo", city: "CABA", types: ["wellness"], base: 8 },
-  { name: "Lotus Yoga", hood: "Palermo", city: "CABA", types: ["wellness"], base: 8 },
-  { name: "Templo Verde", hood: "Belgrano", city: "CABA", types: ["wellness"], base: 18 },
-
-  // ── GBA / Provincia ──
-  { name: "Puerto de Frutos", hood: "Tigre Centro", city: "Tigre", types: ["food", "art"], base: 11 },
-  { name: "Centro Cultural San Isidro", hood: "San Isidro", city: "San Isidro", types: ["theater", "music"], base: 20 },
-  { name: "Quinta Trabucco", hood: "Florida", city: "Vicente López", types: ["outdoor"], base: 10 },
-  { name: "Pasaje Dardo Rocha", hood: "Centro", city: "La Plata", types: ["art", "music"], base: 20 },
-  { name: "Teatro Argentino", hood: "Centro", city: "La Plata", types: ["theater", "music"], base: 21 },
-
-  // ── Mar del Plata ──
-  { name: "Casino Central", hood: "Centro", city: "Mar del Plata", types: ["music", "theater"], base: 21 },
-  { name: "Teatro Auditorium", hood: "Playa Grande", city: "Mar del Plata", types: ["theater"], base: 21 },
-  { name: "Playa Grande", hood: "Playa Grande", city: "Mar del Plata", types: ["sport", "outdoor"], base: 9 },
-
-  // ── Mendoza ──
-  { name: "Bodega Catena Zapata", hood: "Luján de Cuyo", city: "Mendoza", types: ["wine"], base: 11 },
-  { name: "Bodega Salentein", hood: "Valle de Uco", city: "Mendoza", types: ["wine"], base: 11 },
-  { name: "Bodega Achaval-Ferrer", hood: "Perdriel", city: "Mendoza", types: ["wine"], base: 11 },
-  { name: "Bodega Trapiche", hood: "Maipú", city: "Mendoza", types: ["wine"], base: 11 },
-  { name: "Bodega Bressia", hood: "Agrelo", city: "Mendoza", types: ["wine"], base: 12 },
-  { name: "Centro Cultural Le Parc", hood: "Godoy Cruz", city: "Mendoza", types: ["art", "music"], base: 20 },
-
-  // ── Córdoba ──
-  { name: "Sala del Rey", hood: "Nueva Córdoba", city: "Córdoba", types: ["music"], base: 22 },
-  { name: "Cineclub Hugo del Carril", hood: "Centro", city: "Córdoba", types: ["cinema"], base: 19 },
-  { name: "Teatro del Libertador", hood: "Centro", city: "Córdoba", types: ["theater"], base: 20 },
-  { name: "Plaza de la Música", hood: "Alta Córdoba", city: "Córdoba", types: ["music"], base: 22 },
-  { name: "Quality Espacio", hood: "Cerro de las Rosas", city: "Córdoba", types: ["music"], base: 22 },
-
-  // ── Rosario ──
-  { name: "Centro Cultural Roberto Fontanarrosa", hood: "Centro", city: "Rosario", types: ["art", "theater"], base: 19 },
-  { name: "Centro Cultural Parque España", hood: "Pichincha", city: "Rosario", types: ["music", "art"], base: 20 },
-  { name: "Bar El Cairo", hood: "Centro", city: "Rosario", types: ["bar", "music"], base: 21 },
-  { name: "Teatro El Círculo", hood: "Centro", city: "Rosario", types: ["theater", "music"], base: 21 },
-
-  // ── Patagonia ──
-  { name: "Cerro Catedral", hood: "Bariloche", city: "Bariloche", types: ["ski", "sport"], base: 9 },
-  { name: "Club Andino Bariloche", hood: "Centro", city: "Bariloche", types: ["sport", "outdoor"], base: 8 },
-  { name: "Cerro Otto", hood: "Bariloche", city: "Bariloche", types: ["outdoor"], base: 10 },
-  { name: "Lago Lácar", hood: "San Martín de los Andes", city: "Neuquén", types: ["outdoor", "sport"], base: 9 },
-  { name: "Glaciar Perito Moreno", hood: "Los Glaciares", city: "El Calafate", types: ["outdoor", "adventure"], base: 9 },
-  { name: "Cerro Chapelco", hood: "San Martín de los Andes", city: "Neuquén", types: ["ski"], base: 9 },
-
-  // ── Norte ──
-  { name: "La Casona del Molino", hood: "Centro", city: "Salta", types: ["music"], base: 22 },
-  { name: "Teatro Provincial Salta", hood: "Centro", city: "Salta", types: ["theater"], base: 21 },
-  { name: "Casa de los Jiménez", hood: "Centro", city: "Cafayate", types: ["wine", "food"], base: 13 },
-  { name: "Quebrada de Humahuaca", hood: "Humahuaca", city: "Jujuy", types: ["outdoor"], base: 9 },
-  { name: "Iglesia de Tilcara", hood: "Tilcara", city: "Jujuy", types: ["art"], base: 11 },
-
-  // ── Mesopotamia ──
-  { name: "Parque Nacional Iguazú", hood: "Cataratas", city: "Puerto Iguazú", types: ["outdoor", "adventure"], base: 9 },
-
-  // ── Restaurantes con tango / música en vivo ──
-  { name: "Café Tortoni", hood: "Monserrat", city: "CABA", types: ["dance", "food"], base: 21 },
-  { name: "Esquina Carlos Gardel", hood: "Abasto", city: "CABA", types: ["dance", "food"], base: 21 },
-  { name: "El Querandí", hood: "Monserrat", city: "CABA", types: ["dance", "food"], base: 21 },
-  { name: "La Ventana Tango", hood: "San Telmo", city: "CABA", types: ["dance", "food"], base: 21 },
-  { name: "Madero Tango", hood: "Puerto Madero", city: "CABA", types: ["dance", "food"], base: 21 },
-  { name: "Las Violetas", hood: "Almagro", city: "CABA", types: ["food", "music"], base: 19 },
-  { name: "36 Billares", hood: "San Nicolás", city: "CABA", types: ["food", "music"], base: 19 },
-  { name: "La Poesía", hood: "San Telmo", city: "CABA", types: ["food", "music"], base: 20 },
-  { name: "Café La Biela", hood: "Recoleta", city: "CABA", types: ["food"], base: 16 },
-  { name: "Gran Café Tortoni", hood: "Monserrat", city: "CABA", types: ["food", "music"], base: 18 },
-
-  // ── Más venues importantes CABA ──
-  { name: "Luna Park", hood: "San Nicolás", city: "CABA", types: ["music", "sport"], base: 21 },
-  { name: "Estadio Único", hood: "La Plata", city: "La Plata", types: ["music", "sport"], base: 21 },
-  { name: "Hipódromo de Palermo", hood: "Palermo", city: "CABA", types: ["sport", "outdoor"], base: 20 },
-  { name: "Hipódromo de San Isidro", hood: "San Isidro", city: "San Isidro", types: ["sport"], base: 15 },
-  { name: "Tecnópolis", hood: "Villa Martelli", city: "Buenos Aires", types: ["art", "music"], base: 17 },
-  { name: "Centro Cultural Kirchner", hood: "San Nicolás", city: "CABA", types: ["music", "art"], base: 19 },
-  { name: "Teatro Coliseo", hood: "Retiro", city: "CABA", types: ["music", "theater"], base: 20 },
-  { name: "ND Ateneo", hood: "Retiro", city: "CABA", types: ["music", "theater"], base: 21 },
-  { name: "Hotel Bauen", hood: "San Nicolás", city: "CABA", types: ["theater", "music"], base: 21 },
-
-  // ── Más Mendoza ──
-  { name: "Bodega Zuccardi", hood: "Maipú", city: "Mendoza", types: ["wine", "food"], base: 12 },
-  { name: "Bodega Norton", hood: "Luján de Cuyo", city: "Mendoza", types: ["wine"], base: 11 },
-  { name: "Bodega Bianchi", hood: "San Rafael", city: "Mendoza", types: ["wine"], base: 11 },
-  { name: "Bodega Ruca Malen", hood: "Luján de Cuyo", city: "Mendoza", types: ["wine", "food"], base: 13 },
-
-  // ── Más Bariloche y Patagonia ──
-  { name: "Cervecería Patagonia", hood: "Llao Llao", city: "Bariloche", types: ["bar", "food"], base: 17 },
-  { name: "Cerro Bayo", hood: "Villa La Angostura", city: "Neuquén", types: ["ski"], base: 9 },
-  { name: "Hosteria Las Balsas", hood: "Villa La Angostura", city: "Neuquén", types: ["food", "wine"], base: 21 },
-  { name: "Las Buttes", hood: "Bariloche", city: "Bariloche", types: ["food", "wine"], base: 21 },
-
-  // ── Más Salta/Norte ──
-  { name: "Tren a las Nubes", hood: "San Antonio de los Cobres", city: "Salta", types: ["adventure", "outdoor"], base: 7 },
-  { name: "Bodega Piattelli", hood: "Cafayate", city: "Cafayate", types: ["wine"], base: 12 },
-  { name: "Bodega El Esteco", hood: "Cafayate", city: "Cafayate", types: ["wine"], base: 12 },
-
-  // ── Más Córdoba ──
-  { name: "La Cumbrecita", hood: "Calamuchita", city: "Villa General Belgrano", types: ["outdoor"], base: 10 },
-  { name: "Centro Cultural Córdoba", hood: "Nueva Córdoba", city: "Córdoba", types: ["music", "art"], base: 20 },
-  { name: "Forja", hood: "Nueva Córdoba", city: "Córdoba", types: ["music"], base: 22 },
-
-  // ── Costa atlántica ──
-  { name: "Cariló Beach Club", hood: "Cariló", city: "Pinamar", types: ["food", "music"], base: 21 },
-  { name: "Espacio Clarín", hood: "Centro", city: "Mar del Plata", types: ["theater"], base: 21 },
+// ─── Invented venue names ───────────────────────────────────────────────────
+const PREFIXES = ["Bar", "Café", "Espacio", "Club", "Sala", "Casa", "Patio", "Taller", "Estudio", "Centro", "Hostería", "Galpón"];
+const NAMES = [
+  "Aurora", "Limón", "Marea", "Mística", "Ronda", "Faro", "Bohemia", "Mosaico",
+  "Aroma", "Luna", "Telar", "Sombra", "Vereda", "Tierra", "Bruma", "Ámbar",
+  "Cardenal", "Olivo", "Mocambo", "Trova", "Esquina", "Velero", "Sirena",
+  "Querido", "Refugio", "Mirador", "Tiempo", "Lince", "Brisa", "Cuarzo",
+  "Maíz", "Trébol", "Caoba", "Origen", "Cisne", "Lirio", "Cumbre", "Niebla",
 ];
 
-// ─── Title templates per category (Argentine flavor) ─────────────────────────
-const TRIBUTES = ["Soda Stereo", "Spinetta", "Charly García", "Fito Páez", "Sumo", "Patricio Rey", "Divididos", "Los Redondos", "Calamaro", "Cerati", "Babasónicos", "Bersuit"];
-const GENRES = ["indie", "rock", "jazz", "blues", "electrónica", "funk", "soul", "folk", "experimental"];
-const PLAYS = ["La vida es sueño", "Macbeth", "Casa de muñecas", "Esperando a Godot", "El loco y la triste", "Despedida", "Tarde de un fauno", "Un enemigo del pueblo", "Tres hermanas"];
-const STANDUP = ["Stand up & cerveza", "Open mic", "Improv en vivo", "Noche de comedia", "Comedia stand up", "Microcomedia"];
+function venueName(seed: number) {
+  return `${PREFIXES[seed % PREFIXES.length]} ${NAMES[(seed * 7 + 3) % NAMES.length]}`;
+}
 
-const TITLE_POOLS: Record<Cat, ((seed: number, venue: Venue) => string)[]> = {
+// ─── Categories with default times ──────────────────────────────────────────
+type CatEntry = { cat: Cat; baseHour: number; durHr: number; weight: number };
+const CATS: CatEntry[] = [
+  { cat: "music", baseHour: 21, durHr: 3, weight: 22 },
+  { cat: "food", baseHour: 21, durHr: 2.5, weight: 18 },
+  { cat: "bar", baseHour: 20, durHr: 3, weight: 12 },
+  { cat: "wine", baseHour: 19, durHr: 2, weight: 8 },
+  { cat: "art", baseHour: 18, durHr: 2.5, weight: 10 },
+  { cat: "theater", baseHour: 20, durHr: 2, weight: 8 },
+  { cat: "comedy", baseHour: 21, durHr: 2, weight: 6 },
+  { cat: "cinema", baseHour: 20, durHr: 2, weight: 5 },
+  { cat: "dance", baseHour: 22, durHr: 4, weight: 6 },
+  { cat: "wellness", baseHour: 8, durHr: 1.5, weight: 5 },
+  { cat: "outdoor", baseHour: 10, durHr: 3, weight: 5 },
+  { cat: "sport", baseHour: 9, durHr: 2, weight: 4 },
+  { cat: "adventure", baseHour: 9, durHr: 5, weight: 2 },
+  { cat: "ski", baseHour: 9, durHr: 6, weight: 1 },
+];
+const TOTAL_CAT_WEIGHT = CATS.reduce((s, c) => s + c.weight, 0);
+
+function pickCat(seed: number): CatEntry {
+  let r = ((seed * 31337 + 7919) >>> 0) % TOTAL_CAT_WEIGHT;
+  for (const c of CATS) {
+    if (r < c.weight) return c;
+    r -= c.weight;
+  }
+  return CATS[0];
+}
+
+// ─── Title pools per category ───────────────────────────────────────────────
+const TITLES: Record<Cat, string[]> = {
   music: [
-    (s) => `Tributo a ${TRIBUTES[s % TRIBUTES.length]}`,
-    (s) => `Noche de ${GENRES[s % GENRES.length]}`,
-    (s, v) => `${v.name.split(" ")[0]} Sessions`,
-    () => "Bandas emergentes en vivo",
-    () => "Set acústico",
-    () => "Orquesta típica en vivo",
-    () => "Showcase de bandas",
-    () => "DJ residente",
-  ],
-  theater: [
-    (s) => `Estreno: ${PLAYS[s % PLAYS.length]}`,
-    () => "Función única",
-    () => "Off Corrientes",
-    (s) => PLAYS[s % PLAYS.length],
-    () => "Función especial",
-  ],
-  comedy: [
-    (s) => STANDUP[s % STANDUP.length],
-    () => "Stand up & cerveza",
-    () => "Open mic comedia",
-    () => "Improv show",
-    () => "Noche de monólogos",
+    "Noche acústica", "Banda emergente", "Indie en vivo", "Set DJ", "Concierto íntimo",
+    "Jazz quartet", "Folklore en vivo", "Tributo a Soda Stereo", "Tributo a Spinetta",
+    "Tributo a Charly", "Tributo a Cerati", "Set electrónico", "Funk en vivo",
+    "Blues night", "Orquesta típica", "Cumbia pop", "Reggae session", "Rock barrial",
+    "Showcase de bandas", "Open mic musical",
   ],
   food: [
-    () => "Cena maridada",
-    () => "Menú degustación",
-    () => "Open kitchen",
-    () => "Asado argentino",
-    () => "Cooking class: empanadas",
-    () => "Pasta fresca night",
-    () => "Brunch dominical",
-  ],
-  wine: [
-    () => "Cata de vinos de Mendoza",
-    () => "Maridaje de Malbec",
-    () => "Cata a ciegas",
-    () => "Vinos naturales argentinos",
-    () => "Tasting: bodegas boutique",
-    () => "Cena con bodeguero",
+    "Cena maridada", "Menú degustación", "Cocina abierta", "Brunch dominical",
+    "Asado experience", "Pasta fresca night", "Sushi omakase", "Cooking class: empanadas",
+    "Chef en vivo", "Cena a ciegas", "Burger fest", "Picada gourmet",
+    "Cena vegana", "Ramen night", "Cena de pasta", "Mariscos del día",
   ],
   bar: [
-    () => "Catación de cocktails",
-    () => "Cerveza artesanal nights",
-    () => "Speakeasy session",
-    () => "After office",
-    () => "Trivia & beers",
-    () => "Vermut & vinilo",
+    "Cocktails de autor", "Cerveza artesanal night", "After office", "Speakeasy session",
+    "Trivia & beers", "Vermut & vinilo", "Catación de gin", "Whisky tasting",
+    "Cervecero invitado", "Karaoke night", "Pub quiz", "Cocktail masterclass",
+  ],
+  wine: [
+    "Cata de Malbec", "Maridaje de vinos", "Cata a ciegas", "Vinos naturales",
+    "Catación: bodegas boutique", "Cata + tapas", "Cata vertical", "Vinos del valle",
+    "Bodega + cena", "Cata con sommelier", "Cata de espumantes",
   ],
   art: [
-    () => "Cerámica y vino",
-    () => "Taller de torno",
-    () => "Pintura sobre cerámica",
-    () => "Feria de productores",
-    () => "Mercado de diseño",
-    () => "Inauguración de muestra",
-    () => "Visita guiada",
-    () => "Workshop creativo",
+    "Cerámica y vino", "Taller de torno", "Pintura sobre arcilla", "Iniciación a cerámica",
+    "Workshop de acuarela", "Feria de productores", "Mercado de diseño", "Mercado vintage",
+    "Inauguración de muestra", "Visita guiada", "Workshop de collage", "Vasija + vino",
+    "Pintura al óleo", "Dibujo de modelo vivo", "Taller de fotografía",
+  ],
+  theater: [
+    "Estreno: La espera", "Off Corrientes", "Función única", "Drama: Vecinos",
+    "Comedia: El malentendido", "Monólogo: Solo en casa", "Función para principiantes",
+    "Teatro experimental", "Lectura dramatizada", "Bunraku argentino",
+  ],
+  comedy: [
+    "Stand up & cerveza", "Open mic comedia", "Improv show", "Noche de comedia",
+    "Microcomedia", "Standuperos invitados", "Comedy battle", "Comedia bilingüe",
   ],
   cinema: [
-    () => "Cine al aire libre",
-    () => "Cineclub: ciclo argentino",
-    () => "Festival de cortos",
-    () => "Estreno + Q&A",
-    () => "Sesión BAFICI",
-    () => "Doble función",
+    "Cine al aire libre", "Cineclub: ciclo argentino", "Festival de cortos",
+    "Estreno + Q&A", "Doble función", "Cineclub: clásicos", "Documental + debate",
+    "Cine bajo las estrellas",
   ],
   dance: [
-    () => "Milonga",
-    () => "Práctica + show",
-    () => "Clase de tango",
-    () => "Noche de bachata",
-    () => "Salsa social",
-    () => "Tango para principiantes",
-  ],
-  outdoor: [
-    () => "Picnic nocturno",
-    () => "Caminata histórica",
-    () => "Bici tour",
-    () => "Yoga al aire libre",
-    () => "Avistaje de aves",
-    () => "Recorrido por la reserva",
+    "Milonga", "Práctica + show", "Clase de tango", "Bachata night", "Salsa social",
+    "Reggaetón class", "Swing night", "Forró en vivo", "Tango para principiantes",
+    "Folklore + peña", "Hip hop session",
   ],
   wellness: [
-    () => "Yoga al amanecer",
-    () => "Meditación guiada",
-    () => "Sound bath",
-    () => "Vinyasa flow",
-    () => "Pilates al amanecer",
+    "Yoga al amanecer", "Meditación guiada", "Sound bath", "Vinyasa flow",
+    "Pilates", "Mindfulness session", "Yin yoga", "Respiración consciente",
+    "Reiki grupal", "Tai chi en el parque",
+  ],
+  outdoor: [
+    "Picnic nocturno", "Caminata histórica", "Bici tour", "Yoga al aire libre",
+    "Avistaje de aves", "Recorrido por la reserva", "Trekking urbano", "Stand-up paddle",
+    "Kayak al atardecer", "Cabalgata por las sierras",
   ],
   sport: [
-    () => "Trail running",
-    () => "5K nocturno",
-    () => "Bike day",
-    () => "SUP atardecer",
-    () => "Class de boxing",
-  ],
-  ski: [
-    () => "Día de esquí",
-    () => "Clase de snowboard",
-    () => "Esquí nocturno",
-    () => "Ski + après",
+    "Trail running", "5K nocturno", "Bike day", "Pádel social", "Fútbol 5 abierto",
+    "Yoga + bici", "Bouldering session", "Class de boxing", "Tenis abierto",
+    "Spinning grupal",
   ],
   adventure: [
-    () => "Travesía en kayak",
-    () => "Trekking guiado",
-    () => "Cabalgata por las sierras",
-    () => "Travesía 4x4",
+    "Skydive day", "Parapente", "Bungee jump", "Travesía en kayak",
+    "Trekking de altura", "Rafting", "Tirolesa", "Caving", "Rappel",
+  ],
+  ski: [
+    "Día de esquí", "Clase de snowboard", "Esquí nocturno", "Ski + après",
+    "Travesía de esquí de fondo", "Iniciación snowboard",
   ],
 };
 
-// ─── Attendee names (mix of AR-friendly) ────────────────────────────────────
+// ─── Attendee names ─────────────────────────────────────────────────────────
 const FIRSTS = ["Martina","Lucas","Sofía","Andrés","Valentina","Tomás","Camila","Ignacio","Florencia","Ramiro","Paula","Diego","Carolina","Julieta","Marcos","Renata","Bruno","Elena","Nicolás","Agustina","Felipe","Lucía","Mateo","Catalina","Joaquín","Juana","Pedro","Manuela","Joaco","Delfina","Bautista","Olivia","Tobías"];
 const LASTS = ["R.","F.","M.","P.","G.","B.","S.","T.","V.","N.","A.","L.","C.","D."];
 
@@ -433,106 +232,46 @@ function attendees(n: number, seed: number): string[] {
   return out;
 }
 
-// ─── Generator ──────────────────────────────────────────────────────────────
-const TODAY = new Date("2026-05-12T00:00:00");
-const MAX_DAYS = 180; // ~6 months ahead
-
-function dateForIndex(i: number): { iso: string; hour: number } {
-  // Spread events over ~6 months, varying time of day
-  const dayOffset = Math.floor((i * 11 + i % 7) % MAX_DAYS);
-  const d = new Date(TODAY);
-  d.setDate(d.getDate() + dayOffset);
-  return {
-    iso: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
-    hour: 0, // hour set by venue base
-  };
-}
-
-// ─── Ticket platforms (real Argentine ticket sites) ──────────────────────────
-function ticketInfo(venue: Venue, cat: Cat, title: string): { url: string; label: "ticket" | "reserve" } {
-  const name = venue.name.toLowerCase();
+// ─── Ticket platform mapping ────────────────────────────────────────────────
+function ticketInfo(cat: Cat, title: string, venue: string): { url: string; label: "ticket" | "reserve" } {
   const q = encodeURIComponent(title);
-
-  // Restaurants → reserve via TheFork or Google Maps
   if (cat === "food") {
-    return {
-      url: `https://www.thefork.com.ar/buscar?cityId=&search=${encodeURIComponent(venue.name)}`,
-      label: "reserve",
-    };
+    return { url: `https://www.thefork.com.ar/buscar?search=${encodeURIComponent(venue)}`, label: "reserve" };
   }
-
-  // Big arena venues
-  if (name.includes("movistar arena") || name.includes("luna park") || name.includes("estadio único"))
-    return { url: `https://www.ticketek.com.ar/buscador?Term=${q}`, label: "ticket" };
-
-  // Teatro Colón
-  if (name.includes("teatro colón"))
-    return { url: "https://teatrocolon.org.ar/es/programacion", label: "ticket" };
-
-  // CCK (Centro Cultural Kirchner)
-  if (name.includes("kirchner"))
-    return { url: "https://www.cck.gob.ar/agenda/", label: "ticket" };
-
-  // Self-ticketed venues
-  if (name.includes("vorterix")) return { url: "https://www.vorterix.com/agenda", label: "ticket" };
-  if (name.includes("la trastienda")) return { url: "https://www.latrastienda.com/", label: "ticket" };
-  if (name.includes("niceto")) return { url: "https://www.nicetoclub.com/", label: "ticket" };
-  if (name.includes("konex")) return { url: "https://www.ccknnex.com.ar/agenda", label: "ticket" };
-  if (name.includes("usina del arte")) return { url: "https://www.usinadelarte.org/", label: "ticket" };
-  if (name.includes("malba")) return { url: "https://www.malba.org.ar/agenda/", label: "ticket" };
-  if (name.includes("recoleta")) return { url: "https://www.centroculturalrecoleta.org/", label: "ticket" };
-
-  // Theater → Plateanet (the main theater ticket platform in Argentina)
   if (cat === "theater") return { url: `https://www.plateanet.com/Search?txt=${q}`, label: "ticket" };
-
-  // Cinema → All Access / Sala Lugones / generic
   if (cat === "cinema") return { url: `https://www.allaccess.com.ar/?s=${q}`, label: "ticket" };
-
-  // Workshops / wellness / art / wine → Eventbrite
   if (cat === "wellness" || cat === "art" || cat === "wine") {
-    return {
-      url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`,
-      label: "ticket",
-    };
+    return { url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`, label: "ticket" };
   }
-
-  // Tango venues (dance) → own site / Plateanet
-  if (cat === "dance") {
-    if (name.includes("ventana") || name.includes("madero") || name.includes("querandí") || name.includes("gardel") || name.includes("tortoni")) {
-      return { url: `https://www.thefork.com.ar/buscar?search=${encodeURIComponent(venue.name)}`, label: "reserve" };
-    }
-    return { url: `https://www.plateanet.com/Search?txt=${q}`, label: "ticket" };
-  }
-
-  // Adventure / outdoor → Eventbrite or platform-specific
   if (cat === "adventure" || cat === "outdoor" || cat === "sport" || cat === "ski") {
-    return {
-      url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`,
-      label: "ticket",
-    };
+    return { url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`, label: "ticket" };
   }
-
-  // Default music + everything else → Ticketek (biggest AR platform)
-  return {
-    url: `https://www.ticketek.com.ar/buscador?Term=${q}`,
-    label: "ticket",
-  };
+  if (cat === "dance") return { url: `https://www.plateanet.com/Search?txt=${q}`, label: "ticket" };
+  if (cat === "bar") return { url: `https://www.eventbrite.com.ar/d/argentina/all-events/?q=${q}`, label: "ticket" };
+  return { url: `https://www.ticketek.com.ar/buscador?Term=${q}`, label: "ticket" };
 }
 
-function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent {
-  const { iso } = dateForIndex(id);
-  const baseHour = venue.base ?? (cat === "wellness" ? 8 : cat === "outdoor" ? 10 : cat === "food" ? 21 : 20);
-  // small variation: ±0 or +30 minutes
-  const minute = (id + i) % 2 === 0 ? "00" : "30";
-  const startISO = `${iso}T${String(baseHour).padStart(2, "0")}:${minute}:00`;
+// ─── Generator: cover every day from today forward ──────────────────────────
+function startOfToday(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
 
-  // Duration by cat
-  const durHr = ({
-    music: 3, theater: 2, comedy: 2, food: 2.5, wine: 2, bar: 3, art: 2.5,
-    cinema: 2, dance: 4, outdoor: 3, wellness: 1.5, sport: 2, ski: 6, adventure: 5,
-  } as Record<Cat, number>)[cat];
+const DAYS_FORWARD = 180; // ~6 months
+const EVENTS_PER_DAY = (day: number) => 8 + (day % 7); // 8-14 events per day
 
-  const start = new Date(startISO);
+function makeEvent(
+  id: number,
+  title: string,
+  venue: string,
+  hood: string,
+  city: string,
+  iso: string,
+  durHr: number,
+  cat: Cat,
+): DemoEvent {
+  const start = new Date(iso);
   const end = new Date(start.getTime() + durHr * 3_600_000);
   const dateLabel = start
     .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
@@ -540,29 +279,22 @@ function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent
   const timeLabel = start.toLocaleTimeString("en-GB", {
     hour: "2-digit", minute: "2-digit", hour12: false,
   });
-
-  // Pick a title from the pool
-  const pool = TITLE_POOLS[cat];
-  const titleFn = pool[(id + i * 3) % pool.length];
-  const title = titleFn(id + i, venue);
-
   const imgArr = IMG[cat];
   const image = imgArr[id % imgArr.length];
   const spots = 5 + ((id * 17) % 80);
-  const ticket = ticketInfo(venue, cat, title);
-
+  const ticket = ticketInfo(cat, title, venue);
   return {
     id: `ar${id}`,
     title,
-    venue: venue.name,
-    hood: venue.hood,
-    city: venue.city,
+    venue,
+    hood,
+    city,
     country: "Argentina",
-    location: `${venue.hood}, ${venue.city}`,
+    location: `${hood}, ${city}`,
     dateLabel,
     timeLabel,
     image,
-    startISO,
+    startISO: iso,
     endISO: end.toISOString().slice(0, 19),
     spots,
     attendees: attendees(Math.min(spots, 5), id),
@@ -571,7 +303,7 @@ function makeRealEvent(id: number, venue: Venue, cat: Cat, i: number): DemoEvent
   };
 }
 
-// Deterministic shuffle so events from same venue don't cluster
+// Deterministic shuffle (so events from same day/city don't cluster)
 function shuffle<T>(arr: T[], seed = 42): T[] {
   const a = [...arr];
   let s = seed;
@@ -585,15 +317,31 @@ function shuffle<T>(arr: T[], seed = 42): T[] {
 
 export function generateArRealEvents(): DemoEvent[] {
   const events: DemoEvent[] = [];
+  const today = startOfToday();
   let id = 1;
-  // For each venue, generate multiple events from its supported types
-  for (const venue of VENUES) {
-    const eventsPerVenue = 8 + (id % 8); // 8-15 events per venue (~1400-1700 events total)
-    for (let i = 0; i < eventsPerVenue; i++) {
-      const cat = venue.types[i % venue.types.length];
-      events.push(makeRealEvent(id, venue, cat, i));
+
+  for (let dayIdx = 0; dayIdx < DAYS_FORWARD; dayIdx++) {
+    const date = new Date(today);
+    date.setDate(date.getDate() + dayIdx);
+    const dayISO = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    const count = EVENTS_PER_DAY(dayIdx);
+    for (let i = 0; i < count; i++) {
+      const seed = id;
+      const city = pickCity(seed);
+      const hood = city.hoods[seed % city.hoods.length];
+      const catEntry = pickCat(seed);
+      const cat = catEntry.cat;
+      const pool = TITLES[cat];
+      const title = pool[(seed * 13 + i * 5) % pool.length];
+      const venue = venueName(seed);
+      // Hour variation: ±1 hour around baseHour
+      const hour = Math.max(7, Math.min(23, catEntry.baseHour + ((seed % 3) - 1)));
+      const minutes = (i % 2 === 0) ? "00" : "30";
+      const iso = `${dayISO}T${String(hour).padStart(2, "0")}:${minutes}:00`;
+      events.push(makeEvent(id, title, venue, hood, city.name, iso, catEntry.durHr, cat));
       id++;
     }
   }
+
   return shuffle(events, 7777);
 }
