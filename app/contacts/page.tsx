@@ -134,14 +134,9 @@ export default function ContactsPage() {
     setBusyId(target.id);
     const supabase = createClient();
     try {
-      // Auto-mutual follow (no request needed)
-      await supabase.from("follows").upsert(
-        [
-          { follower_id: user.id, following_id: target.id },
-          { follower_id: target.id, following_id: user.id },
-        ],
-        { onConflict: "follower_id,following_id", ignoreDuplicates: true }
-      );
+      // Atomic mutual follow via SECURITY DEFINER function (bypasses RLS on reverse)
+      const { error: rpcErr } = await supabase.rpc("add_contact", { target_id: target.id });
+      if (rpcErr) throw rpcErr;
 
       // FYI notification (not actionable)
       await supabase.from("notifications").insert({

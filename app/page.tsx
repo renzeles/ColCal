@@ -293,16 +293,11 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
     setBusyId(target.id);
     const supabase = createClient();
     try {
-      // Mutual follow — immediate, no request needed
-      await supabase.from("follows").upsert(
-        [
-          { follower_id: userId, following_id: target.id },
-          { follower_id: target.id, following_id: userId },
-        ],
-        { onConflict: "follower_id,following_id", ignoreDuplicates: true }
-      );
+      // Atomic mutual follow via SECURITY DEFINER function (bypasses RLS on reverse)
+      const { error: rpcErr } = await supabase.rpc("add_contact", { target_id: target.id });
+      if (rpcErr) throw rpcErr;
 
-      // Notify the other person (FYI, not actionable)
+      // FYI notification (not actionable). Failure is non-blocking.
       await supabase.from("notifications").insert({
         user_id: target.id,
         type: "contact_added",
@@ -318,8 +313,10 @@ function ContactsSection({ userId, userProfile }: { userId: string; userProfile:
       setMutuals((prev) => prev.find((p) => p.id === target.id) ? prev : [target, ...prev]);
       setSuggestions((prev) => prev.filter((p) => p.id !== target.id));
       toast.show("success", `Added ${target.full_name ?? target.username} as a contact.`);
-    } catch {
-      toast.show("error", "Couldn't add contact.");
+    } catch (err) {
+      console.error("addContact failed:", err);
+      const msg = err instanceof Error ? err.message : "Couldn't add contact.";
+      toast.show("error", msg);
     } finally {
       setBusyId(null);
     }

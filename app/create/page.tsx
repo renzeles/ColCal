@@ -513,14 +513,9 @@ export default function CreatePage() {
               .in("email", attendeeEmails);
             const matchedProfiles = (matched as Array<{ id: string; email: string; username: string | null; full_name: string | null }> | null) ?? [];
             if (matchedProfiles.length > 0) {
-              // Auto-mutual follow with each matched invitee (skip if already follows)
-              const followRows = matchedProfiles.flatMap((p) => [
-                { follower_id: user.id, following_id: p.id },
-                { follower_id: p.id, following_id: user.id },
-              ]);
-              await supabase.from("follows").upsert(followRows, {
-                onConflict: "follower_id,following_id",
-                ignoreDuplicates: true,
+              // Auto-mutual follow via SECURITY DEFINER bulk RPC (RLS-safe both directions)
+              await supabase.rpc("add_contacts_bulk", {
+                target_ids: matchedProfiles.map((p) => p.id),
               });
 
               // Event invite notification for each
