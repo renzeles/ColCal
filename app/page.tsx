@@ -789,7 +789,7 @@ export default function HomePage() {
                               </span>
                             )}
                             {friendsGoing > 0 && (
-                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-violet-50 text-violet-700">
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#fbf6ee] text-[#8b5a3c] border border-[#8b5a3c]/20">
                                 👥 {friendsGoing} friend{friendsGoing === 1 ? "" : "s"}
                               </span>
                             )}

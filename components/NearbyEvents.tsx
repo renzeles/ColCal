@@ -7,6 +7,7 @@ import { DatePicker } from "./DatePicker";
 import { WeatherChip } from "./WeatherChip";
 import { generateWorldEvents } from "@/lib/world-events";
 import { generateArRealEvents } from "@/lib/ar-real-events";
+import { IMG_FALLBACK } from "@/lib/event-images";
 
 export type DemoEvent = {
   id: string;
@@ -305,7 +306,12 @@ function EventDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ev.image} alt={ev.title} className="w-full h-52 sm:h-64 object-cover" />
+        <img
+          src={ev.image}
+          alt={ev.title}
+          className="w-full h-52 sm:h-64 object-cover"
+          onError={(e) => { if (e.currentTarget.src !== IMG_FALLBACK) e.currentTarget.src = IMG_FALLBACK; }}
+        />
 
         <button
           onClick={onClose}
@@ -876,7 +882,13 @@ function EventCard({
     <div className="rounded-2xl overflow-hidden bg-white card-shadow card-shadow-hover flex flex-col h-full">
       <button className="text-left w-full cursor-pointer relative" onClick={onOpen}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ev.image} alt={ev.title} className="w-full h-36 sm:h-40 object-cover" loading="lazy" />
+        <img
+          src={ev.image}
+          alt={ev.title}
+          className="w-full h-36 sm:h-40 object-cover"
+          loading="lazy"
+          onError={(e) => { if (e.currentTarget.src !== IMG_FALLBACK) e.currentTarget.src = IMG_FALLBACK; }}
+        />
         {until && (
           <span
             className={`absolute top-2 left-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider shadow-sm ${
