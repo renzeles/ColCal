@@ -74,6 +74,9 @@ export default function CreatePage() {
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
   const [showCoords, setShowCoords] = useState(false);
+  const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "monthly" | null>(null);
+  const [recurrenceEnd, setRecurrenceEnd] = useState<string>("");
+  const [coHostIds, setCoHostIds] = useState<string[]>([]);
 
   const formRef = useRef<HTMLFormElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -188,6 +191,9 @@ export default function CreatePage() {
           setCapacity(evToEdit.capacity ?? null);
           setLatitude(evToEdit.latitude ?? null);
           setLongitude(evToEdit.longitude ?? null);
+          setRecurrence(evToEdit.recurrence ?? null);
+          setRecurrenceEnd(evToEdit.recurrence_end ?? "");
+          setCoHostIds(evToEdit.co_hosts ?? []);
           setShowCoords(!!(evToEdit.latitude || evToEdit.longitude));
           window.history.replaceState({}, "", "/create");
           setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
@@ -233,6 +239,9 @@ export default function CreatePage() {
     setLatitude(null);
     setLongitude(null);
     setShowCoords(false);
+    setRecurrence(null);
+    setRecurrenceEnd("");
+    setCoHostIds([]);
     if (imageInputRef.current) imageInputRef.current.value = "";
   }
 
@@ -257,6 +266,9 @@ export default function CreatePage() {
     setCapacity(ev.capacity ?? null);
     setLatitude(ev.latitude ?? null);
     setLongitude(ev.longitude ?? null);
+    setRecurrence(ev.recurrence ?? null);
+    setRecurrenceEnd(ev.recurrence_end ?? "");
+    setCoHostIds(ev.co_hosts ?? []);
     setShowCoords(!!(ev.latitude || ev.longitude));
     if (imageInputRef.current) imageInputRef.current.value = "";
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -442,6 +454,9 @@ export default function CreatePage() {
             capacity: capacity,
             latitude: isOnline ? null : latitude,
             longitude: isOnline ? null : longitude,
+            recurrence,
+            recurrence_end: recurrenceEnd || null,
+            co_hosts: coHostIds,
           })
           .eq("id", editingId)
           .select()
@@ -478,6 +493,9 @@ export default function CreatePage() {
             capacity: capacity,
             latitude: isOnline ? null : latitude,
             longitude: isOnline ? null : longitude,
+            recurrence,
+            recurrence_end: recurrenceEnd || null,
+            co_hosts: coHostIds,
           })
           .select()
           .single();
@@ -923,6 +941,75 @@ export default function CreatePage() {
               )}
             </div>
 
+            {/* Recurrence */}
+            <div>
+              <label className="block text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wider">Repetir</label>
+              <div className="flex gap-2 flex-wrap">
+                {([
+                  { v: null, label: "No" },
+                  { v: "daily", label: "Diario" },
+                  { v: "weekly", label: "Semanal" },
+                  { v: "monthly", label: "Mensual" },
+                ] as const).map((opt) => (
+                  <button
+                    key={String(opt.v)}
+                    type="button"
+                    onClick={() => setRecurrence(opt.v as "daily" | "weekly" | "monthly" | null)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition ${
+                      recurrence === opt.v
+                        ? "bg-[#8b5a3c] text-white"
+                        : "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {recurrence && (
+                <div className="mt-2 flex items-center gap-2 text-xs">
+                  <span className="text-stone-500">Hasta</span>
+                  <input
+                    type="date"
+                    value={recurrenceEnd}
+                    onChange={(e) => setRecurrenceEnd(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-stone-200 focus:outline-none focus:border-[#8b5a3c] text-sm"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Co-hosts */}
+            {followingProfiles.length > 0 && (
+              <div>
+                <label className="block text-[11px] font-bold text-stone-500 mb-2 uppercase tracking-wider">
+                  Co-organizadores <span className="font-normal lowercase text-stone-400">(opcional)</span>
+                </label>
+                <div className="flex gap-2 flex-wrap">
+                  {followingProfiles.map((p) => {
+                    const active = coHostIds.includes(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() =>
+                          setCoHostIds((prev) =>
+                            active ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                          )
+                        }
+                        className={`flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full text-xs font-bold transition ${
+                          active
+                            ? "bg-[#8b5a3c] text-white"
+                            : "bg-stone-100 text-stone-700 hover:bg-stone-200"
+                        }`}
+                      >
+                        <Avatar src={p.avatar_url} name={p.full_name} size="xs" />
+                        {p.full_name ?? p.username ?? "?"}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <textarea
               value={description}

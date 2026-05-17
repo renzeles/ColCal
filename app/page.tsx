@@ -18,6 +18,7 @@ import { FeedSkeleton } from "@/components/Skeleton";
 import { NearbyEvents } from "@/components/NearbyEvents";
 import { ChannelsSection } from "@/components/ChannelsSection";
 import { ShareEventModal } from "@/components/ShareEventModal";
+import { EventReactions } from "@/components/EventReactions";
 import { parseQuickEvent, toLocalIso } from "@/lib/nlp-event";
 import { getEventColorStyles } from "@/lib/event-colors";
 import type { Profile, SentEvent } from "@/lib/types";
@@ -509,6 +510,7 @@ export default function HomePage() {
 
   const [myRsvpMap, setMyRsvpMap] = useState<Map<string, RsvpStatus>>(new Map());
   const [rsvpCounts, setRsvpCounts] = useState<Map<string, number>>(new Map());
+  const [friendsGoingCount, setFriendsGoingCount] = useState<Map<string, number>>(new Map());
 
   useEffect(() => {
     if (!user) return;
@@ -528,10 +530,12 @@ export default function HomePage() {
         .eq("creator_id", user.id)
         .order("start_at", { ascending: false }).limit(100);
 
-      const [privateRes, mineRes] = await Promise.all([
+      const [privateRes, mineRes, followingRes] = await Promise.all([
         privateQuery ?? Promise.resolve({ data: [] as SentEvent[] }),
         mineQuery,
+        supabase.from("follows").select("following_id").eq("follower_id", user.id),
       ]);
+      const follows = followingRes.data ?? [];
 
       const allCreatorIds = Array.from(new Set([
         ...((privateRes.data ?? []) as SentEvent[]).map((e) => e.creator_id),
@@ -559,23 +563,38 @@ export default function HomePage() {
       const privateEventIds = resolvedPrivate.map((e) => e.id);
       const mineEventIds = resolvedMine.map((e) => e.id);
 
-      const [myRsvpsRes, acceptedRsvpsRes] = await Promise.all([
+      const [myRsvpsRes, acceptedRsvpsRes, mutualsRes] = await Promise.all([
         privateEventIds.length > 0
           ? supabase.from("event_rsvps").select("event_id, status").eq("user_id", user.id).in("event_id", privateEventIds)
           : Promise.resolve({ data: [] }),
         mineEventIds.length > 0
-          ? supabase.from("event_rsvps").select("event_id").eq("status", "accepted").in("event_id", mineEventIds)
+          ? supabase.from("event_rsvps").select("event_id, user_id").eq("status", "accepted").in("event_id", mineEventIds)
           : Promise.resolve({ data: [] }),
+        supabase.from("follows").select("follower_id").eq("following_id", user.id),
       ]);
 
       setMyRsvpMap(new Map(
         ((myRsvpsRes.data ?? []) as { event_id: string; status: string }[]).map((r) => [r.event_id, r.status as RsvpStatus])
       ));
       const countsMap = new Map<string, number>();
-      ((acceptedRsvpsRes.data ?? []) as { event_id: string }[]).forEach((r) => {
+      const acceptedRsvps = (acceptedRsvpsRes.data ?? []) as { event_id: string; user_id: string }[];
+      acceptedRsvps.forEach((r) => {
         countsMap.set(r.event_id, (countsMap.get(r.event_id) ?? 0) + 1);
       });
       setRsvpCounts(countsMap);
+
+      // Friends-going: count of mutuals (people who follow me AND I follow back)
+      const followerIds = new Set(((mutualsRes.data ?? []) as { follower_id: string }[]).map((r) => r.follower_id));
+      const followingIds = new Set(((follows ?? []) as { following_id: string }[]).map((r) => r.following_id));
+      const mutualSet = new Set([...followingIds].filter((id) => followerIds.has(id)));
+      const friendsCount = new Map<string, number>();
+      acceptedRsvps.forEach((r) => {
+        if (mutualSet.has(r.user_id)) {
+          friendsCount.set(r.event_id, (friendsCount.get(r.event_id) ?? 0) + 1);
+        }
+      });
+      setFriendsGoingCount(friendsCount);
+
       setLoading(false);
     })();
   }, [user]);
@@ -742,6 +761,7 @@ export default function HomePage() {
                 {visibleEvents.map((ev) => {
                   const evStyles = getEventColorStyles(ev.color);
                   const acceptedCount = rsvpCounts.get(ev.id) ?? 0;
+                  const friendsGoing = friendsGoingCount.get(ev.id) ?? 0;
                   const isMine = ev.creator_id === user.id;
                   const isJoined = ev.source === "joined";
                   const canEdit = isMine && !isJoined;
@@ -766,6 +786,11 @@ export default function HomePage() {
                             {acceptedCount > 0 && (
                               <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700">
                                 <Check className="h-3 w-3" /> {acceptedCount}
+                              </span>
+                            )}
+                            {friendsGoing > 0 && (
+                              <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-violet-50 text-violet-700">
+                                👥 {friendsGoing} friend{friendsGoing === 1 ? "" : "s"}
                               </span>
                             )}
                             {isJoined && (
@@ -813,6 +838,9 @@ export default function HomePage() {
                         {ev.description && (
                           <p className="text-sm text-stone-700 mt-2 whitespace-pre-line line-clamp-3">{ev.description}</p>
                         )}
+                        <div className="mt-3">
+                          <EventReactions eventId={ev.id} userId={user.id} compact />
+                        </div>
                       </div>
                     </li>
                   );

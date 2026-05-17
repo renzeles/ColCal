@@ -40,6 +40,9 @@ export type SentEvent = {
   capacity: number | null;
   is_online: boolean;
   source?: "created" | "joined";
+  recurrence?: "daily" | "weekly" | "monthly" | null;
+  recurrence_end?: string | null;
+  co_hosts?: string[];
   created_at: string;
 };
 
